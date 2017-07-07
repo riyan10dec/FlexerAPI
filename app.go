@@ -1,7 +1,7 @@
 package main
 
 import (
-	model "Flexer/Model"
+	model "FlexerAPI/Model"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -56,6 +56,10 @@ func (a *App) initializeRoutes() {
 	a.Router.HandleFunc("/login", a.Login).Methods("POST")
 	a.Router.Handle("/addActivity", jwtMiddleware.Handler(http.HandlerFunc(a.AddActivity))).Methods("POST")
 	a.Router.Handle("/addActivity/screenshot", jwtMiddleware.Handler(http.HandlerFunc(a.AddActivityScreenshot))).Methods("POST")
+
+	a.Router.HandleFunc("/cms/login", a.CMSLogin).Methods("POST")
+	//a.Router.Handle("/cms/addEmployee", jwtMiddleware.Handler(http.HandlerFunc(a.AddEmployee))).Methods("POST")
+	//a.Router.Handle("/cms/editEmployee", jwtMiddleware.Handler(http.HandlerFunc(a.EditEmployee))).Methods("POST")
 }
 
 //HANDLERS
@@ -212,6 +216,39 @@ func (a *App) AddActivityScreenshot(w http.ResponseWriter, r *http.Request) {
 		"status":  "OK",
 		"message": "Successfully insert screenshot",
 	}
+	respondWithJSON(w, http.StatusOK, result)
+}
+
+func (a *App) CMSLogin(w http.ResponseWriter, r *http.Request) {
+	var loginX model.Login
+	decoder := json.NewDecoder(r.Body)
+	defer r.Body.Close()
+	if err := decoder.Decode(&loginX); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+	login := model.Login{Userlogin: loginX.Userlogin, Password: loginX.Password}
+	if err := login.DoLogin(a.DB); err != nil {
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, err.Error())
+		} else {
+			respondWithError(w, http.StatusInternalServerError, "Wrong username or password")
+		}
+		return
+	}
+
+	//Getting Client Info
+	client := model.Client{ClientID: login.ClientID}
+	if err := client.GetClient(a.DB); err != nil {
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, err.Error())
+		} else {
+			respondWithError(w, http.StatusInternalServerError, "No Client Found")
+		}
+		return
+	}
+	token := GetToken(login.Username)
+	result := map[string]string{"token": token, "clientname": client.ClientName, "username": login.Username}
 	respondWithJSON(w, http.StatusOK, result)
 }
 

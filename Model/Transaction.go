@@ -1,7 +1,7 @@
 package model
 
 import (
-	query "Flexer/Query"
+	query "FlexerAPI/Query"
 	"database/sql"
 	"time"
 )
