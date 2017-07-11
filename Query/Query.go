@@ -8,7 +8,7 @@ type Query struct {
 var q = []Query{
 	Query{
 		key:   "loginQuery",
-		query: "SELECT user_name, client_id FROM Master_User where user_login = ? and user_password = ? LIMIT 1",
+		query: "SELECT user_name, client_id FROM Master_User where email = ? and password = ? LIMIT 1",
 	}, Query{
 		key:   "getClientQuery",
 		query: "SELECT client_name FROM Master_Client where client_id = ? LIMIT 1",

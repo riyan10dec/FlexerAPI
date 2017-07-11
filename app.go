@@ -32,9 +32,9 @@ const (
 var ScreenshotStorage string
 
 //CONNECTION
-func (a *App) Initialize(user, password, dbname, screenshotStorage string) {
-	connectionString :=
-		fmt.Sprintf("%s:%s@/%s?charset=utf8&parseTime=True&loc=Local", user, password, dbname)
+func (a *App) Initialize(user, password, host, port, dbname, screenshotStorage string) {
+	connectionString := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", user, password, host, port, dbname)
+	//fmt.Sprintf("%s:%s@/%s?charset=utf8&parseTime=True&loc=Local", user, password, dbname)
 	ScreenshotStorage = screenshotStorage
 	var err error
 	a.DB, err = sql.Open("mysql", connectionString)
@@ -72,28 +72,17 @@ func (a *App) Login(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
-	login := model.Login{Userlogin: loginX.Userlogin, Password: loginX.Password}
+	login := model.Login{Email: loginX.Email, Password: loginX.Password}
 	if err := login.DoLogin(a.DB); err != nil {
 		if err != nil {
 			respondWithError(w, http.StatusInternalServerError, err.Error())
 		} else {
-			respondWithError(w, http.StatusInternalServerError, "Wrong username or password")
+			respondWithError(w, http.StatusInternalServerError, "Wrong email or password")
 		}
 		return
 	}
-
-	//Getting Client Info
-	client := model.Client{ClientID: login.ClientID}
-	if err := client.GetClient(a.DB); err != nil {
-		if err != nil {
-			respondWithError(w, http.StatusInternalServerError, err.Error())
-		} else {
-			respondWithError(w, http.StatusInternalServerError, "No Client Found")
-		}
-		return
-	}
-	token := GetToken(login.Username)
-	result := map[string]string{"token": token, "clientname": client.ClientName, "username": login.Username}
+	token := GetToken(strconv.Itoa(login.Session.SessionID))
+	result := map[string]interface{}{"token": token, "session_id": login.Session.SessionID}
 	respondWithJSON(w, http.StatusOK, result)
 }
 
@@ -227,8 +216,8 @@ func (a *App) CMSLogin(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
-	login := model.Login{Userlogin: loginX.Userlogin, Password: loginX.Password}
-	if err := login.DoLogin(a.DB); err != nil {
+	login := model.Login{Email: loginX.Email, Password: loginX.Password}
+	if err := login.DoLoginCMS(a.DB); err != nil {
 		if err != nil {
 			respondWithError(w, http.StatusInternalServerError, err.Error())
 		} else {
@@ -247,7 +236,7 @@ func (a *App) CMSLogin(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	token := GetToken(login.Username)
+	token := GetToken(strconv.Itoa(login.Session.SessionID))
 	result := map[string]string{"token": token, "clientname": client.ClientName, "username": login.Username}
 	respondWithJSON(w, http.StatusOK, result)
 }
