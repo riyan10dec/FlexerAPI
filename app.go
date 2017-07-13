@@ -76,6 +76,7 @@ func (a *App) initializeRoutes() {
 */
 func (a *App) Login(w http.ResponseWriter, r *http.Request) {
 	//vars := mux.Vars(r)
+	fmt.Println("Login Called")
 	var loginX model.Login
 	decoder := json.NewDecoder(r.Body)
 	defer r.Body.Close()
