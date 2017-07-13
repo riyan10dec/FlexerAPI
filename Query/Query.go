@@ -7,18 +7,24 @@ type Query struct {
 
 var q = []Query{
 	Query{
-		key:   "loginQuery",
-		query: "SELECT user_name, client_id FROM Master_User where email = ? and password = ? LIMIT 1",
+		key: "loginQuery",
+		query: `CALL sp_front_login(
+			?,?,?,?,?,?,?)`,
 	}, Query{
 		key:   "getClientQuery",
 		query: "SELECT client_name FROM Master_Client where client_id = ? LIMIT 1",
 	}, Query{
+		key:   "frontCheckSession",
+		query: "CALL sp_front_check_session (?)",
+	}, Query{
+		key:   "logoutQuery",
+		query: "CALL sp_front_logout (?)",
+	}, Query{
 		key:   "getUserID",
 		query: "SELECT user_id FROM Master_User where user_login = ? LIMIT 1",
 	}, Query{
-		key: "createTransactionQuery",
-		query: `INSERT INTO Trx_transaction  (user_id, Date, Application_id, URL, Keystroke, Mouseclick, StartTime, EndTime)
-    								Values(?, CURDATE(), ?, ?, ?, ?, ?, ?)`,
+		key:   "createTransactionQuery",
+		query: `CALL sp_front_add_transaction(?,?,?,?,?,?,?)`,
 	}, Query{
 		key: "getApplicationName",
 		query: `SELECT 
@@ -46,6 +52,9 @@ var q = []Query{
 	}, Query{
 		key:   "createApplicationQuery",
 		query: `Insert into Master_Application (application_name) values(?)`,
+	}, Query{
+		key:   "cmsAddUser",
+		query: `call sp_add_user(?,?,?,?,?,?,?,?,?)`,
 	},
 }
 

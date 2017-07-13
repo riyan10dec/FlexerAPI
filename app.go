@@ -2,6 +2,7 @@ package main
 
 import (
 	model "FlexerAPI/Model"
+	query "FlexerAPI/Query"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -54,112 +55,143 @@ func (a *App) Run(addr string) {
 //ROUTES
 func (a *App) initializeRoutes() {
 	a.Router.HandleFunc("/login", a.Login).Methods("POST")
+	a.Router.Handle("/logout", jwtMiddleware.Handler(http.HandlerFunc(a.Logout))).Methods("POST")
 	a.Router.Handle("/addActivity", jwtMiddleware.Handler(http.HandlerFunc(a.AddActivity))).Methods("POST")
 	a.Router.Handle("/addActivity/screenshot", jwtMiddleware.Handler(http.HandlerFunc(a.AddActivityScreenshot))).Methods("POST")
 
 	a.Router.HandleFunc("/cms/login", a.CMSLogin).Methods("POST")
-	//a.Router.Handle("/cms/addEmployee", jwtMiddleware.Handler(http.HandlerFunc(a.AddEmployee))).Methods("POST")
+	a.Router.Handle("/cms/addEmployee", jwtMiddleware.Handler(http.HandlerFunc(a.AddEmployee))).Methods("POST")
 	//a.Router.Handle("/cms/editEmployee", jwtMiddleware.Handler(http.HandlerFunc(a.EditEmployee))).Methods("POST")
 }
 
 //HANDLERS
+
+/* Login :
+- Email: string
+- Password : string
+- LocationType : string
+- IPAddress : string
+- Lat : string
+- Long : string
+*/
 func (a *App) Login(w http.ResponseWriter, r *http.Request) {
 	//vars := mux.Vars(r)
 	var loginX model.Login
 	decoder := json.NewDecoder(r.Body)
 	defer r.Body.Close()
 	if err := decoder.Decode(&loginX); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
 		return
 	}
-	login := model.Login{Email: loginX.Email, Password: loginX.Password}
+	login := model.Login{
+		Email:        loginX.Email,
+		Password:     loginX.Password,
+		LocationType: loginX.LocationType,
+		IPAddress:    loginX.IPAddress,
+		City:         loginX.City,
+		Lat:          loginX.Lat,
+		Long:         loginX.Long,
+	}
 	if err := login.DoLogin(a.DB); err != nil {
-		if err != nil {
-			respondWithError(w, http.StatusInternalServerError, err.Error())
-		} else {
-			respondWithError(w, http.StatusInternalServerError, "Wrong email or password")
-		}
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+	}
+
+	if login.ResultCode == 1 {
+		token := GetToken(strconv.Itoa(login.Session.SessionID))
+		result := map[string]interface{}{"status": login.ResultCode, "description": login.ResultDescription, "token": token, "session_id": login.Session.SessionID}
+		respondWithJSON(w, http.StatusOK, result)
+	} else {
+		respondWithError(w, http.StatusInternalServerError, login.ResultDescription, login.ResultCode)
+	}
+}
+
+/* Logout :
+- SessionID: int
+*/
+func (a *App) Logout(w http.ResponseWriter, r *http.Request) {
+	//vars := mux.Vars(r)
+	var Logout model.Logout
+	decoder := json.NewDecoder(r.Body)
+	defer r.Body.Close()
+	if err := decoder.Decode(&Logout); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
 		return
 	}
-	token := GetToken(strconv.Itoa(login.Session.SessionID))
-	result := map[string]interface{}{"token": token, "session_id": login.Session.SessionID}
-	respondWithJSON(w, http.StatusOK, result)
+	logout := model.Logout{
+		SessionID: Logout.SessionID,
+	}
+	if err := logout.DoLogout(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+	}
+
+	if logout.ResultCode == 1 {
+		result := map[string]interface{}{"status": logout.ResultCode, "description": logout.ResultDescription}
+		respondWithJSON(w, http.StatusOK, result)
+	} else {
+		respondWithError(w, http.StatusInternalServerError, logout.ResultDescription, logout.ResultCode)
+	}
 }
 
 /* AddActivity :
 Params:
 - TransactionID (GUID)
-- Userlogin (string)
-- ApplicationName (string)
-- URL (string)
+- SessionID (int)
+- ActivityName (string)
+- ActivityType (string)
 - Mouseclick (int)
 - Keystroke (int)
+- StartDate (string)
+- EndDate (string)
 */
 func (a *App) AddActivity(w http.ResponseWriter, r *http.Request) {
 	var transactions []model.Transaction
-
+	var Session model.Session
 	decoder := json.NewDecoder(r.Body)
 	defer r.Body.Close()
-	if err := decoder.Decode(&transactions); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+	if err := decoder.Decode(&Session); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload : Session", -2)
 		return
 	}
-	var errorCount int
-	var clientTrID []string
+	transactions = Session.Transactions
+	if err := Session.FrontCheckSession(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+	}
+	//Preparing
+	tx, err := a.DB.Begin()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+	}
+	defer tx.Rollback()
+	stmt, err := a.DB.Prepare(query.SearchQuery("createTransactionQuery"))
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+	}
+	defer stmt.Close()
 	for _, transaction := range transactions {
-		application := model.Application{ApplicationName: transaction.ApplicationName}
-		status, err := application.CheckApplicationExist(a.DB)
-		if status == 0 {
-			if err == sql.ErrNoRows {
-				application.CreateApplication(a.DB)
-			} else {
-				clientTrID = append(clientTrID, strconv.Itoa(transaction.TransactionID))
-				errorCount++
-				continue
-				//respondWithError(w, http.StatusInternalServerError, "Error Checking Application")
-			}
-		}
-		//Getting ApplicationID
-		application.GetApplicationID(a.DB)
-		transaction.ApplicationID = application.ApplicationID
-		//Getting UserID
-		user := model.User{UserLogin: transaction.Userlogin}
-		err = user.GetUserID(a.DB)
+		//Convert Date
+		transaction.StartDate = SyncDate(transaction.StartDate, Session.ClientDate, Session.ServerDate)
+		transaction.EndDate = SyncDate(transaction.EndDate, Session.ClientDate, Session.ServerDate)
+		fmt.Println(transaction.StartDate)
+		err := stmt.QueryRow(
+			Session.SessionID,
+			transaction.ActivityName,
+			transaction.ActivityType,
+			transaction.Keystroke,
+			transaction.Mouseclick,
+			transaction.StartDate,
+			transaction.EndDate,
+		).Scan(&transaction.ResultCode, &transaction.ResultDescription)
 		if err != nil {
-			clientTrID = append(clientTrID, strconv.Itoa(transaction.TransactionID))
-			errorCount++
-			continue
+			tx.Rollback()
+			respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
 		}
-		transaction.UserID = user.UserID
-		//Create Transaction
-		rows, err := transaction.CreateTransaction(a.DB)
-		if err != nil {
-			clientTrID = append(clientTrID, strconv.Itoa(transaction.TransactionID))
-			errorCount++
-			continue
-			//respondWithError(w, http.StatusInternalServerError, "Failed Create Transaction")
-		}
-		row, err := rows.RowsAffected()
-		if err != nil {
-			clientTrID = append(clientTrID, strconv.Itoa(transaction.TransactionID))
-			errorCount++
-			continue
-			//respondWithError(w, http.StatusInternalServerError, "Failed Get Rows Affected")
-		} else if row == 0 {
-			clientTrID = append(clientTrID, strconv.Itoa(transaction.TransactionID))
-			errorCount++
-			continue
-			//respondWithError(w, http.StatusInternalServerError, "No Transaction Inserted, ApplicationName : "+transaction.ApplicationName+", URL: "+transaction.URL)
+		if transaction.ResultCode != 1 {
+			tx.Rollback()
+			respondWithError(w, http.StatusInternalServerError, transaction.ResultDescription, transaction.ResultCode)
 		}
 	}
-	encjson, _ := json.Marshal(clientTrID)
-	var returnMsg string
-	if errorCount == 0 {
-		returnMsg = "All Transaction Successfully Inserted"
-	} else {
-		returnMsg = "Error when Inserting"
-	}
-	result := map[string]string{"errorTrID": string(encjson), "message": returnMsg}
+	tx.Commit()
+	result := map[string]interface{}{"status": 1, "description": "All Transaction Successfully Inserted"}
 	respondWithJSON(w, http.StatusOK, result)
 }
 
@@ -184,20 +216,20 @@ func (a *App) AddActivityScreenshot(w http.ResponseWriter, r *http.Request) {
 			file, err := files[i].Open()
 			defer file.Close()
 			if err != nil {
-				respondWithError(w, http.StatusInternalServerError, err.Error())
+				respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
 			}
 
 			fp := filepath.Join(ScreenshotStorage, files[i].Filename)
 			out, err := os.Create(fp)
 			defer out.Close()
 			if err != nil {
-				respondWithError(w, http.StatusInternalServerError, err.Error())
+				respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
 			}
 
 			_, err = io.Copy(out, file)
 
 			if err != nil {
-				respondWithError(w, http.StatusInternalServerError, err.Error())
+				respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
 			}
 		}
 	}
@@ -208,36 +240,52 @@ func (a *App) AddActivityScreenshot(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, result)
 }
 
+//CMS API
 func (a *App) CMSLogin(w http.ResponseWriter, r *http.Request) {
 	var loginX model.Login
 	decoder := json.NewDecoder(r.Body)
 	defer r.Body.Close()
 	if err := decoder.Decode(&loginX); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
 		return
 	}
 	login := model.Login{Email: loginX.Email, Password: loginX.Password}
 	if err := login.DoLoginCMS(a.DB); err != nil {
-		if err != nil {
-			respondWithError(w, http.StatusInternalServerError, err.Error())
-		} else {
-			respondWithError(w, http.StatusInternalServerError, "Wrong username or password")
-		}
-		return
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
 	}
 
-	//Getting Client Info
-	client := model.Client{ClientID: login.ClientID}
-	if err := client.GetClient(a.DB); err != nil {
-		if err != nil {
-			respondWithError(w, http.StatusInternalServerError, err.Error())
-		} else {
-			respondWithError(w, http.StatusInternalServerError, "No Client Found")
-		}
+	token := GetToken(strconv.Itoa(login.Session.SessionID))
+	result := map[string]interface{}{"token": token, "client_id": login.ClientID}
+	respondWithJSON(w, http.StatusOK, result)
+}
+
+func (a *App) AddEmployee(w http.ResponseWriter, r *http.Request) {
+	var User model.User
+	decoder := json.NewDecoder(r.Body)
+	defer r.Body.Close()
+	if err := decoder.Decode(&User); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
 		return
 	}
-	token := GetToken(strconv.Itoa(login.Session.SessionID))
-	result := map[string]string{"token": token, "clientname": client.ClientName, "username": login.Username}
+	user := model.User{
+		ClientID:     User.ClientID,
+		UserName:     User.UserName,
+		Role:         User.Role,
+		SuperiorID:   User.SuperiorID,
+		Email:        User.Email,
+		UserPassword: User.UserPassword,
+		ActiveStart:  User.ActiveStart,
+		ActiveEnd:    User.ActiveEnd,
+		EntryUser:    User.EntryUser,
+	}
+
+	if err := user.AddEmployee(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+	}
+	if user.ResultCode != 1 {
+		respondWithError(w, http.StatusInternalServerError, user.ResultDescription, user.ResultCode)
+	}
+	result := map[string]interface{}{"status": 1}
 	respondWithJSON(w, http.StatusOK, result)
 }
 
@@ -271,8 +319,8 @@ var jwtMiddleware = jwtmiddleware.New(jwtmiddleware.Options{
 })
 
 //HELPER
-func respondWithError(w http.ResponseWriter, code int, message string) {
-	respondWithJSON(w, code, map[string]string{"error": message})
+func respondWithError(w http.ResponseWriter, code int, message string, errorCode int) {
+	respondWithJSON(w, code, map[string]interface{}{"status": errorCode, "error": message})
 }
 
 func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
@@ -281,4 +329,11 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	w.Write(response)
+}
+func SyncDate(destDate string, baseDate string, sourceDate string) string {
+	start, _ := time.Parse("2006-01-02 15:04:05", destDate)
+	serverDate, _ := time.Parse("2006-01-02 15:04:05", sourceDate)
+	clientDate, _ := time.Parse("2006-01-02 15:04:05", baseDate)
+	syncedDate := start.Add(serverDate.Sub(clientDate))
+	return syncedDate.Format("2006-01-02 15:04:05")
 }
