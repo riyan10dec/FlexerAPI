@@ -1,0 +1,19 @@
+{
+    "database" : {
+        "host" : "M.cykigjdaqb15.us-east-1.rds.amazonaws.com",
+        "user" : "sa",
+        "password" : "Password95",
+        "port": "3306",
+        "dbName":"M"
+    },
+    "aws" : {
+        "S3" : {
+            "accessKeyID" : "AKIAJLEEPVHSGV2A4UZAa",
+            "secretAccessKey" : "xLjLEkA5iPt5Lr0utZ5CnJ6Aib8nAXJxuc36ufod",
+            "bucketName" : "img-screenshot"
+        }
+    },
+    "etc" : {
+        "screenshotExt" : "jpeg"
+    }
+}

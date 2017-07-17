@@ -6,7 +6,7 @@ import (
 )
 
 type Session struct {
-	SessionID         int    `json:"sessionID"`
+	SessionID         int64  `json:"sessionID"`
 	UserID            int    `json:"userID"`
 	Status            string `json:"status"`
 	EntryDate         string `json:"entryDate"`

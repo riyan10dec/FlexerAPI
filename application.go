@@ -1,7 +1,12 @@
 package main
 
+import model "FlexerAPI/Model"
+
 func main() {
-	a := App{}
-	a.Initialize("sa", "Password95", "M.cykigjdaqb15.us-east-1.rds.amazonaws.com", "3306", "M", "")
+	var Config model.Config
+	Config.LoadConfiguration("config.json")
+
+	a := App{Config: Config}
+	a.Initialize()
 	a.Run(":2345")
 }

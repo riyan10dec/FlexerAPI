@@ -26,6 +26,12 @@ var q = []Query{
 		key:   "createTransactionQuery",
 		query: `CALL sp_front_add_transaction(?,?,?,?,?,?,?)`,
 	}, Query{
+		key:   "getScreenshotParamQuery",
+		query: `CALL sp_front_add_screenshot(?,?,?,?)`,
+	}, Query{
+		key:   "reportScreenshotStatusQuery",
+		query: `CALL sp_front_update_screenshot(?,?,?,?)`,
+	}, Query{
 		key: "getApplicationName",
 		query: `SELECT 
 				Application_name
@@ -55,6 +61,9 @@ var q = []Query{
 	}, Query{
 		key:   "cmsAddUser",
 		query: `call sp_add_user(?,?,?,?,?,?,?,?,?)`,
+	}, Query{
+		key:   "cmsEditUser",
+		query: `call sp_edit_user(?,?,?,?,?,?,?,?,?)`,
 	},
 }
 
