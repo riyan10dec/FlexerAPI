@@ -3,6 +3,7 @@ package main
 import (
 	model "FlexerAPI/Model"
 	query "FlexerAPI/Query"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -10,18 +11,21 @@ import (
 	"mime/multipart"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
-	jwtmiddleware "github.com/auth0/go-jwt-middleware"
-	jwt "github.com/dgrijalva/jwt-go"
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/gorilla/mux"
+	"golang.org/x/oauth2/google"
+	storage "google.golang.org/api/storage/v1"
 
+	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	jwt "github.com/dgrijalva/jwt-go"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/gorilla/mux"
 )
 
 //VARS
@@ -214,7 +218,7 @@ Params :
 */
 func (a *App) AddActivityScreenshot(w http.ResponseWriter, r *http.Request) {
 	//var transactions []model.Transaction
-	file, _, err := r.FormFile("img")
+	filedata, _, err := r.FormFile("img")
 	if err != nil {
 		return
 	}
@@ -243,8 +247,11 @@ func (a *App) AddActivityScreenshot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//Start Uploading File
-	Screenshot.ResultDescription, Screenshot.ResultCode = a.UploadToS3(file, Screenshot.Filename)
-
+	//Screenshot.ResultDescription, Screenshot.ResultCode = a.UploadToS3(file, Screenshot.Filename)
+	Screenshot.Filename, Screenshot.ResultDescription, Screenshot.ResultCode = a.UploadToGoogleCloud(filedata, Screenshot.Filename)
+	if Screenshot.ResultCode != 1 {
+		respondWithError(w, http.StatusInternalServerError, Screenshot.ResultDescription, Screenshot.ResultCode)
+	}
 	//Reporting Status
 	if err := Screenshot.ReportScreenshotStatus(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
@@ -436,4 +443,31 @@ func (a *App) UploadToS3(file multipart.File, filepath string) (string, int) {
 		return fmt.Sprintf("bad response: %s", err.Error()), 0
 	}
 	return fmt.Sprintf("response %s", awsutil.StringValue(resp)), 1
+}
+
+func (a *App) UploadToGoogleCloud(file multipart.File, filepath string) (string, string, int) {
+	scope := storage.DevstorageFullControlScope
+	client, err := google.DefaultClient(context.Background(), scope)
+	filepath = strings.Replace(filepath, "[ext]", "jpeg", -1)
+	if err != nil {
+		log.Fatalf("Unable to get default client: %v", err)
+	}
+	service, err := storage.New(client)
+	if err != nil {
+		log.Fatalf("Unable to create storage service: %v", err)
+	}
+	object := &storage.Object{
+		Name: a.Config.Gcs.ScreenshotFolder + filepath,
+	}
+	//file, err := os.Open(*fileName)
+	// if err != nil {
+	// 	fatalf(service, "Error opening %q: %v", *fileName, err)
+	// }
+	if res, err := service.Objects.Insert(a.Config.Gcs.Bucket, object).Media(file).Do(); err == nil {
+		fmt.Printf("Created object %v at location %v\n\n", res.Name, res.SelfLink)
+	} else {
+		return filepath, err.Error(), 0
+		//fatalf(service, "Objects.Insert failed: %v", err)
+	}
+	return filepath, "", 1
 }

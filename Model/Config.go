@@ -24,6 +24,10 @@ type Config struct {
 	Etc struct {
 		ScreenshotExt string `json:"screenshotExt"`
 	} `json:"etc"`
+	Gcs struct {
+		Bucket           string `json:"bucket"`
+		ScreenshotFolder string `json:"screenshotFolder"`
+	} `json:"gcs"`
 }
 
 func (c *Config) LoadConfiguration(file string) {

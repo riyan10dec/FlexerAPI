@@ -15,5 +15,9 @@
     },
     "etc" : {
         "screenshotExt" : "jpeg"
+    },
+    "gcs" : {
+        "bucket" : "staging.flexerapp-174003.appspot.com",
+        "screenshotFolder" : "img-screenshot"
     }
 }
