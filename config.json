@@ -8,9 +8,6 @@
     },
     "aws" : {
         "S3" : {
-            "accessKeyID" : "AKIAJLEEPVHSGV2A4UZAa",
-            "secretAccessKey" : "xLjLEkA5iPt5Lr0utZ5CnJ6Aib8nAXJxuc36ufod",
-            "bucketName" : "img-screenshot"
         }
     },
     "etc" : {
