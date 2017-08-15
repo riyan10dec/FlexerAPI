@@ -1,7 +1,7 @@
 {
     "database" : {
-        "host" : "M.cykigjdaqb15.us-east-1.rds.amazonaws.com",
-        "user" : "sa",
+        "host" : "35.189.180.151",
+        "user" : "root",
         "password" : "Password95",
         "port": "3306",
         "dbName":"M"
