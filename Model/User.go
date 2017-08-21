@@ -21,14 +21,14 @@ type User struct {
 	Email             string `json:"email"`
 	ResultCode        int
 	ResultDescription string
-	EntryUser         int    `json:"entryUser"`
-	ModifiedBy        int    `json:"modifiedBy"`
-	PositionName      string `json:"positionName"`
-	DepartmentName    string `json:"departmentName"`
-	IPAddress         string `json:"ipAddress"`
-	LoginDate         string `json:"loginDate"`
-	SubsCount         int    `json:"subsCount"`
-	LastActivity      string `json:"lastActivity"`
+	EntryUser         int            `json:"entryUser"`
+	ModifiedBy        int            `json:"modifiedBy"`
+	PositionName      string         `json:"positionName"`
+	DepartmentName    string         `json:"departmentName"`
+	IPAddress         string         `json:"ipAddress"`
+	LoginDate         string         `json:"loginDate"`
+	SubsCount         int            `json:"subsCount"`
+	LastActivity      sql.NullString `json:"lastActivity"`
 	ReferenceUser     []User
 	ActiveOnly        bool `json:"activeOnly"`
 }
@@ -181,15 +181,31 @@ func (u *User) EmployeeTreeChangeSuperior(db *sql.DB) (sql.Result, error) {
 }
 
 func (u *User) GetEmployees(db *sql.DB) error {
-	return db.QueryRow(query.SearchQuery("cmsEmployeeGrid"),
-		u.ClientID).Scan(&u.UserID,
-		&u.EmployeeID,
-		&u.UserName,
-		&u.PositionName,
-		&u.DepartmentName,
-		&u.ActiveStatus,
-		&u.LastActivity,
+	rows, err := db.Query(query.SearchQuery("cmsEmployeeGrid"),
+		u.UserID,
 	)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var u2 User
+		err := rows.Scan(&u2.UserID,
+			&u2.EmployeeID,
+			&u2.UserName,
+			&u2.PositionName,
+			&u2.DepartmentName,
+			&u2.ActiveStatus,
+			&u2.LastActivity)
+		if err != nil {
+			return err
+		}
+		u.ReferenceUser = append(u.ReferenceUser, u2)
+	}
+	err = rows.Err()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 func (u *User) EmailValidation(db *sql.DB) error {
 	return db.QueryRow(query.SearchQuery("cmsEmailValidation"),

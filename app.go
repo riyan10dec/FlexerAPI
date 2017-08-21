@@ -82,6 +82,7 @@ func (a *App) initializeRoutes() {
 	a.Router.Handle("/cms/EmployeeTree/child/{userID}/{activeOnly}", jwtMiddleware.Handler(http.HandlerFunc(a.EmployeeTreeGetChild))).Methods("GET")
 	a.Router.Handle("/cms/EmployeeTree/ChangeSuperior", jwtMiddleware.Handler(http.HandlerFunc(a.EmployeeTreeChangeSuperior))).Methods("POST")
 	a.Router.Handle("/cms/EmailValidation", jwtMiddleware.Handler(http.HandlerFunc(a.EmailValidation))).Methods("POST")
+	a.Router.Handle("/cms/GetAllEmployees/{userID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetAllEmployees))).Methods("GET")
 }
 
 //HANDLERS
@@ -579,6 +580,39 @@ func (a *App) EmailValidation(w http.ResponseWriter, r *http.Request) {
 		status = -1
 	}
 	result := map[string]interface{}{"status": status, "description": user.ResultDescription}
+	respondWithJSON(w, http.StatusOK, result)
+}
+
+func (a *App) GetAllEmployees(w http.ResponseWriter, r *http.Request) {
+	//vars := mux.Vars(r)
+	var User model.User
+	vars := mux.Vars(r)
+	var err error
+	User.UserID, err = strconv.Atoi(vars["userID"])
+	user := model.User{
+		UserID: User.UserID,
+	}
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+
+	if err := user.GetEmployees(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+	}
+	var res []map[string]interface{}
+	for _, u := range user.ReferenceUser {
+		res = append(res, map[string]interface{}{
+			"userID":         u.UserID,
+			"employeeID":     u.EmployeeID,
+			"userName":       u.UserName,
+			"positionName":   u.PositionName,
+			"departmentName": u.DepartmentName,
+			"activeStatus":   u.ActiveStatus,
+			"lastActivity":   u.LastActivity.String,
+		})
+	}
+	result := map[string]interface{}{"employees": res}
 	respondWithJSON(w, http.StatusOK, result)
 }
 

@@ -100,16 +100,8 @@ var q = []Query{
 		query: `update Master_User set Superior_id = ? where User_id = ?;`,
 	},
 	Query{
-		key: "cmsEmployeeGrid",
-		query: `SELECT
-				User_id, Employee_id, User_name, Position_name, Department_name,
-				CASE WHEN curdate() BETWEEN Active_start AND Active_end THEN 'Active' ELSE 'Inactive' END AS Status,
-				(SELECT MAX(End_time) FROM Trx_Transaction x JOIN Trx_Session y ON x.Session_id = y.Session_id WHERE y.User_id = a.User_id) AS Last_activity
-				FROM
-				Master_User a
-				WHERE
-				Client_id = ?
-				AND Position_name <> '#Admin';`,
+		key:   "cmsEmployeeGrid",
+		query: `call sp_cms_get_all_employees (?)`,
 	},
 	Query{
 		key: "cmsEmailValidation",
