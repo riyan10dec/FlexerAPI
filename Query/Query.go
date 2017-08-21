@@ -32,38 +32,109 @@ var q = []Query{
 		key:   "reportScreenshotStatusQuery",
 		query: `CALL sp_front_update_screenshot(?,?,?,?)`,
 	}, Query{
-		key: "getApplicationName",
-		query: `SELECT 
-				Application_name
-			FROM
-				Master_Application
-			WHERE
-				application_id = ?`,
+		key:   "getTask",
+		query: `call sp_front_get_tasks(?)`,
 	}, Query{
-		key: "getApplicationID",
-		query: `SELECT 
-				Application_id
-			FROM
-				Master_Application
-			WHERE
-				application_name = ?`,
-	}, Query{
-		key: "checkApplicationName",
-		query: `SELECT 
-				1
-			FROM
-				Master_Application
-			WHERE
-				Application_name = ?`,
+		key:   "addTask",
+		query: `call sp_front_sync_tasks(?,?,?,?,?)`,
 	}, Query{
 		key:   "createApplicationQuery",
 		query: `Insert into Master_Application (application_name) values(?)`,
-	}, Query{
+	},
+	//CMS
+	Query{
 		key:   "cmsAddUser",
-		query: `call sp_add_user(?,?,?,?,?,?,?,?,?)`,
-	}, Query{
+		query: `call sp_cms_add_user(?,?,?,?,?,?,?,?,?,?,?)`,
+	},
+	Query{
 		key:   "cmsEditUser",
-		query: `call sp_edit_user(?,?,?,?,?,?,?,?,?)`,
+		query: `call sp_cms_edit_user(?,?,?,?,?,?,?,?,?,?,?)`,
+	},
+	//todo
+	Query{
+		key:   "cmsCheckSubscription",
+		query: `call sp_cms_check_subscription(?)`,
+	}, Query{
+		key:   "cmsGetActiveSubs",
+		query: `call sp_cms_get_active_subs(?)`,
+	},
+	Query{
+		key: "cmsEmployeeTreeFirstLevelAll",
+		query: `select User_id, User_name, (select count(1) from Master_User where Client_id = ? and Superior_id = a.User_id) as Subs,
+				CASE WHEN curdate() BETWEEN Active_start AND Active_end THEN 'Active' ELSE 'Inactive' END AS Status
+				from Master_User a
+				where Client_id = ? and Superior_id is null
+				and Position_name <> '#Admin'
+				order by Active_end desc, User_id asc;`,
+	}, Query{
+		key: "cmsEmployeeTreeFirstLevelActive",
+		query: `select User_id, User_name, (select count(1) from Master_User where Client_id = ? and Superior_id = a.User_id) as Subs,
+				CASE WHEN curdate() BETWEEN Active_start AND Active_end THEN 'Active' ELSE 'Inactive' END AS Status
+				from Master_User a
+				where Client_id = ? and Superior_id is null
+				and Position_name <> '#Admin'
+				and curdate() BETWEEN Active_start AND Active_end -- active only
+				order by Active_end desc, User_id asc;`,
+	},
+	Query{
+		key: "cmsEmployeeTreeSubsActive",
+		query: `select User_id, User_name, (select count(1) from Master_User where Superior_id = a.User_id) as Subs,
+				CASE WHEN curdate() BETWEEN Active_start AND Active_end THEN 'Active' ELSE 'Inactive' END AS Status
+				from Master_User a
+				where Superior_id = ?
+				and Position_name <> '#Admin'
+				and curdate() BETWEEN Active_start AND Active_end -- active only
+				order by Active_end desc, User_id asc;`,
+	},
+	Query{
+		key: "cmsEmployeeTreeSubsAll",
+		query: `select User_id, User_name, (select count(1) from Master_User where Superior_id = a.User_id) as Subs,
+				CASE WHEN curdate() BETWEEN Active_start AND Active_end THEN 'Active' ELSE 'Inactive' END AS Status
+				from Master_User a
+				where Superior_id = ?
+				and Position_name <> '#Admin'
+				order by Active_end desc, User_id asc;`,
+	},
+	Query{
+		key:   "cmsEmployeeTreeChangeSuperior",
+		query: `update Master_User set Superior_id = ? where User_id = ?;`,
+	},
+	Query{
+		key: "cmsEmployeeGrid",
+		query: `SELECT
+				User_id, Employee_id, User_name, Position_name, Department_name,
+				CASE WHEN curdate() BETWEEN Active_start AND Active_end THEN 'Active' ELSE 'Inactive' END AS Status,
+				(SELECT MAX(End_time) FROM Trx_Transaction x JOIN Trx_Session y ON x.Session_id = y.Session_id WHERE y.User_id = a.User_id) AS Last_activity
+				FROM
+				Master_User a
+				WHERE
+				Client_id = ?
+				AND Position_name <> '#Admin';`,
+	},
+	Query{
+		key: "cmsEmailValidation",
+		query: `SELECT IF (
+				(SELECT COUNT(1) FROM Master_User
+				WHERE Client_id = ?
+				AND Email = ?
+				AND User_id <> ? ) > 0,
+				'This Email Address is already registered', 'OK') AS Result;`,
+	},
+	Query{
+		key:   "cmsSaveDepartments",
+		query: `call sp_cms_save_departments (?,?,?)`,
+	},
+	Query{
+		key:   "cmsGetAllDepartments",
+		query: `call sp_cms_get_all_departments (?)`,
+	},
+	Query{
+		key:   "cmsGetActiveDepartments",
+		query: `call sp_cms_get_active_departments (?)`,
+	},
+	Query{
+		key:   "cmsChangePassword",
+		query: `call sp_cms_change_password (?,?,?)`,
 	},
 }
 

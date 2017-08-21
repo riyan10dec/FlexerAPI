@@ -24,6 +24,7 @@ type Session struct {
 	StartTime         string
 	EndTime           sql.NullString
 	Transactions      []Transaction `json:"transactions"`
+	Tasks             []Task        `json:"tasks"`
 }
 
 //FrontCheckSession : Check if session is valid and get server time
@@ -35,4 +36,34 @@ func (s *Session) FrontCheckSession(db *sql.DB) error {
 		&s.ServerDate,
 		&s.StartTime,
 		&s.EndTime)
+}
+
+func (s *Session) GetTasks(db *sql.DB) error {
+	//rows, err := db.Query(query.SearchQuery("loginQuery"), l.UserLogin, l.Password)
+	rows, err := db.Query(query.SearchQuery("getTask"),
+		s.SessionID)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var t Task
+		err := rows.Scan(t.TaskID,
+			t.TaskName,
+			t.TaskComplexity,
+			t.IsDaily,
+			t.TaskSource,
+			t.TargetDate,
+			t.TaskPriority,
+			t.IsNew,
+			t.IsInProgress)
+		if err != nil {
+			return err
+		}
+		s.Tasks = append(s.Tasks, t)
+	}
+	err = rows.Err()
+	if err != nil {
+		return err
+	}
+	return nil
 }

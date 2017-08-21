@@ -10,6 +10,7 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -69,10 +70,18 @@ func (a *App) initializeRoutes() {
 	a.Router.Handle("/logout", jwtMiddleware.Handler(http.HandlerFunc(a.Logout))).Methods("POST")
 	a.Router.Handle("/addActivity", jwtMiddleware.Handler(http.HandlerFunc(a.AddActivity))).Methods("POST")
 	a.Router.Handle("/addActivity/screenshot", jwtMiddleware.Handler(http.HandlerFunc(a.AddActivityScreenshot))).Methods("POST")
+	a.Router.Handle("/getTask/{sessionID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetTask))).Methods("GET")
+	a.Router.Handle("/addTask/{sessionID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetTask))).Methods("POST")
 
 	a.Router.HandleFunc("/cms/login", a.CMSLogin).Methods("POST")
 	a.Router.Handle("/cms/addEmployee", jwtMiddleware.Handler(http.HandlerFunc(a.AddEmployee))).Methods("POST")
 	a.Router.Handle("/cms/editEmployee", jwtMiddleware.Handler(http.HandlerFunc(a.EditEmployee))).Methods("POST")
+	a.Router.Handle("/cms/GetActiveSubs/{userID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetActiveSubs))).Methods("GET")
+	a.Router.Handle("/cms/CheckSubscription/{clientID}", jwtMiddleware.Handler(http.HandlerFunc(a.CheckSubscription))).Methods("GET")
+	a.Router.Handle("/cms/EmployeeTree/first/{clientID}/{activeOnly}", jwtMiddleware.Handler(http.HandlerFunc(a.EmployeeTreeGetFirstLevel))).Methods("GET")
+	a.Router.Handle("/cms/EmployeeTree/child/{userID}/{activeOnly}", jwtMiddleware.Handler(http.HandlerFunc(a.EmployeeTreeGetChild))).Methods("GET")
+	a.Router.Handle("/cms/EmployeeTree/ChangeSuperior", jwtMiddleware.Handler(http.HandlerFunc(a.EmployeeTreeChangeSuperior))).Methods("POST")
+	a.Router.Handle("/cms/EmailValidation", jwtMiddleware.Handler(http.HandlerFunc(a.EmailValidation))).Methods("POST")
 }
 
 //HANDLERS
@@ -209,6 +218,52 @@ func (a *App) AddActivity(w http.ResponseWriter, r *http.Request) {
 	result := map[string]interface{}{"status": 1, "description": "All Transaction Successfully Inserted"}
 	respondWithJSON(w, http.StatusOK, result)
 }
+func (a *App) GetTask(w http.ResponseWriter, r *http.Request) {
+	//vars := mux.Vars(r)
+	var session model.Session
+	vars := mux.Vars(r)
+	var err error
+	session.SessionID, err = strconv.ParseInt(vars["sessionID"], 10, 64)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+	if err := session.GetTasks(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+	}
+
+	result := map[string]interface{}{"task": session.Tasks}
+	respondWithJSON(w, http.StatusOK, result)
+}
+func (a *App) AddTask(w http.ResponseWriter, r *http.Request) {
+	//vars := mux.Vars(r)
+	var task model.Task
+	vars := mux.Vars(r)
+	var err error
+	task.Session.SessionID, err = strconv.ParseInt(vars["sessionID"], 10, 64)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	defer r.Body.Close()
+	if err := decoder.Decode(&task); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload : Task", -2)
+		return
+	}
+
+	if err := task.AddTask(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+	}
+
+	if task.ResultCode == 1 {
+		result := map[string]interface{}{"status": task.ResultCode, "description": task.ResultDescription}
+		respondWithJSON(w, http.StatusOK, result)
+	} else {
+		respondWithError(w, http.StatusInternalServerError, task.ResultDescription, task.ResultCode)
+	}
+}
 
 /* AddActivityScreenshot :
 header : multipart/form-data
@@ -295,15 +350,17 @@ func (a *App) AddEmployee(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user := model.User{
-		ClientID:     User.ClientID,
-		UserName:     User.UserName,
-		Role:         User.Role,
-		SuperiorID:   User.SuperiorID,
-		Email:        User.Email,
-		UserPassword: User.UserPassword,
-		ActiveStart:  User.ActiveStart,
-		ActiveEnd:    User.ActiveEnd,
-		EntryUser:    User.EntryUser,
+		ClientID:       User.ClientID,
+		EmployeeID:     User.EmployeeID,
+		UserName:       User.UserName,
+		PositionName:   User.PositionName,
+		DepartmentName: User.DepartmentName,
+		SuperiorID:     User.SuperiorID,
+		Email:          User.Email,
+		UserPassword:   User.UserPassword,
+		ActiveStart:    User.ActiveStart,
+		ActiveEnd:      User.ActiveEnd,
+		EntryUser:      User.EntryUser,
 	}
 
 	if err := user.AddEmployee(a.DB); err != nil {
@@ -325,15 +382,17 @@ func (a *App) EditEmployee(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user := model.User{
-		UserID:       User.UserID,
-		UserName:     User.UserName,
-		Role:         User.Role,
-		SuperiorID:   User.SuperiorID,
-		Email:        User.Email,
-		UserPassword: User.UserPassword,
-		ActiveStart:  User.ActiveStart,
-		ActiveEnd:    User.ActiveEnd,
-		ModifiedBy:   User.ModifiedBy,
+		UserID:         User.UserID,
+		EmployeeID:     User.EmployeeID,
+		UserName:       User.UserName,
+		PositionName:   User.PositionName,
+		DepartmentName: User.DepartmentName,
+		SuperiorID:     User.SuperiorID,
+		Email:          User.Email,
+		UserPassword:   User.UserPassword,
+		ActiveStart:    User.ActiveStart,
+		ActiveEnd:      User.ActiveEnd,
+		ModifiedBy:     User.ModifiedBy,
 	}
 
 	if err := user.EditEmployee(a.DB); err != nil {
@@ -343,6 +402,183 @@ func (a *App) EditEmployee(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, user.ResultDescription, user.ResultCode)
 	}
 	result := map[string]interface{}{"status": 1}
+	respondWithJSON(w, http.StatusOK, result)
+}
+
+func (a *App) GetActiveSubs(w http.ResponseWriter, r *http.Request) {
+	//vars := mux.Vars(r)
+	var User model.User
+	vars := mux.Vars(r)
+	var err error
+	User.UserID, err = strconv.Atoi(vars["userID"])
+	user := model.User{
+		UserID: User.UserID,
+	}
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+
+	if err := user.GetActiveSubs(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+	}
+	var res []map[string]interface{}
+	for _, u := range user.ReferenceUser {
+		res = append(res, map[string]interface{}{
+			"userID":         u.UserID,
+			"employeeID":     u.EmployeeID,
+			"userName":       u.UserName,
+			"positionName":   u.PositionName,
+			"departmentName": u.DepartmentName,
+			"IPAddress":      u.IPAddress,
+			"loginDate":      u.LoginDate,
+		})
+	}
+	result := map[string]interface{}{"activeUsers": res}
+	respondWithJSON(w, http.StatusOK, result)
+}
+
+func (a *App) CheckSubscription(w http.ResponseWriter, r *http.Request) {
+	//vars := mux.Vars(r)
+	var Client model.Client
+	vars := mux.Vars(r)
+	var err error
+	Client.ClientID, err = strconv.Atoi(vars["clientID"])
+	client := model.Client{
+		ClientID: Client.ClientID,
+	}
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+
+	if err := client.CheckSubscription(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+	}
+	result := map[string]interface{}{
+		"subscriptionType":   client.SubscriptionType,
+		"subscriptionStatus": client.SubscriptionStatus,
+		"subscriptionStart":  client.SubscriptionStart,
+		"subscriptionEnd":    client.SubscriptionEnd,
+		"graceUntil":         client.GraceUntil,
+		"maxUser":            client.MaxUser,
+		"registeredMember":   client.RegisteredMember,
+	}
+	respondWithJSON(w, http.StatusOK, result)
+}
+
+func (a *App) EmployeeTreeGetFirstLevel(w http.ResponseWriter, r *http.Request) {
+	//vars := mux.Vars(r)
+	var User model.User
+	vars := mux.Vars(r)
+	var err error
+	User.ClientID, err = strconv.Atoi(vars["clientID"])
+	User.ActiveOnly, err = strconv.ParseBool(vars["activeOnly"])
+	user := model.User{
+		ClientID: User.ClientID,
+	}
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+
+	if err := user.EmployeeTreeFirstLevel(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+	}
+	var res []map[string]interface{}
+	for _, u := range user.ReferenceUser {
+		res = append(res, map[string]interface{}{
+			"userID":       u.UserID,
+			"userName":     u.UserName,
+			"subsCount":    u.SubsCount,
+			"activeStatus": u.ActiveStatus,
+		})
+	}
+	result := map[string]interface{}{"employees": res}
+	respondWithJSON(w, http.StatusOK, result)
+}
+
+func (a *App) EmployeeTreeGetChild(w http.ResponseWriter, r *http.Request) {
+	//vars := mux.Vars(r)
+	var User model.User
+	vars := mux.Vars(r)
+	var err error
+	User.UserID, err = strconv.Atoi(vars["userID"])
+	User.ActiveOnly, err = strconv.ParseBool(vars["activeOnly"])
+	user := model.User{
+		UserID: User.UserID,
+	}
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+
+	if err := user.EmployeeTreeSubs(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+	}
+	var res []map[string]interface{}
+	for _, u := range user.ReferenceUser {
+		res = append(res, map[string]interface{}{
+			"userID":       u.UserID,
+			"userName":     u.UserName,
+			"subsCount":    u.SubsCount,
+			"activeStatus": u.ActiveStatus,
+		})
+	}
+	result := map[string]interface{}{"employees": res}
+	respondWithJSON(w, http.StatusOK, result)
+}
+
+func (a *App) EmployeeTreeChangeSuperior(w http.ResponseWriter, r *http.Request) {
+	var User model.User
+	decoder := json.NewDecoder(r.Body)
+	defer r.Body.Close()
+	if err := decoder.Decode(&User); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+	user := model.User{
+		UserID:     User.UserID,
+		SuperiorID: User.SuperiorID,
+	}
+
+	if _, err := user.EmployeeTreeChangeSuperior(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+	}
+	// if res != sql.Result. {
+	// 	respondWithError(w, http.StatusInternalServerError, user.ResultDescription, user.ResultCode)
+	// }
+	result := map[string]interface{}{"status": 1}
+	respondWithJSON(w, http.StatusOK, result)
+}
+
+func (a *App) EmailValidation(w http.ResponseWriter, r *http.Request) {
+	var User model.User
+	decoder := json.NewDecoder(r.Body)
+	defer r.Body.Close()
+	if err := decoder.Decode(&User); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+	user := model.User{
+		UserID:   User.UserID,
+		ClientID: User.ClientID,
+		Email:    User.Email,
+	}
+
+	if err := user.EmailValidation(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+	}
+	// if res != sql.Result. {
+	// 	respondWithError(w, http.StatusInternalServerError, user.ResultDescription, user.ResultCode)
+	// }
+	var status int
+	if user.ResultDescription == "OK" {
+		status = 1
+	} else {
+		status = -1
+	}
+	result := map[string]interface{}{"status": status, "description": user.ResultDescription}
 	respondWithJSON(w, http.StatusOK, result)
 }
 
@@ -470,4 +706,24 @@ func (a *App) UploadToGoogleCloud(file multipart.File, filepath string) (string,
 		//fatalf(service, "Objects.Insert failed: %v", err)
 	}
 	return filepath, "", 1
+}
+func fieldSet(fields ...string) map[string]bool {
+	set := make(map[string]bool, len(fields))
+	for _, s := range fields {
+		set[s] = true
+	}
+	return set
+}
+func SelectFields(s interface{}, fields ...string) map[string]interface{} {
+	fs := fieldSet(fields...)
+	rt, rv := reflect.TypeOf(&s), reflect.ValueOf(&s)
+	out := make(map[string]interface{}, rt.NumField())
+	for i := 0; i < rt.NumField(); i++ {
+		field := rt.Field(i)
+		jsonKey := field.Tag.Get("json")
+		if fs[jsonKey] {
+			out[jsonKey] = rv.Field(i).Interface()
+		}
+	}
+	return out
 }
