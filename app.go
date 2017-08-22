@@ -75,7 +75,7 @@ func (a *App) initializeRoutes() {
 	a.Router.Handle("/addTask/{sessionID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetTask))).Methods("POST")
 
 	a.Router.HandleFunc("/cms/login", a.CMSLogin).Methods("POST")
-	a.Router.HandleFunc("/cms/addEmployee1", a.EditEmployee).Methods("POST")
+	a.Router.HandleFunc("/cms/addEmployee1", a.AddEmployee).Methods("POST")
 	a.Router.Handle("/cms/addEmployee", jwtMiddleware.Handler(http.HandlerFunc(a.AddEmployee))).Methods("POST")
 	a.Router.Handle("/cms/editEmployee", jwtMiddleware.Handler(http.HandlerFunc(a.EditEmployee))).Methods("POST")
 	a.Router.Handle("/cms/GetActiveSubs/{userID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetActiveSubs))).Methods("GET")
