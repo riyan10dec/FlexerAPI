@@ -26,6 +26,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	jwt "github.com/dgrijalva/jwt-go"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -61,7 +62,7 @@ func (a *App) Initialize() { //user, password, host, port, dbname, screenshotSto
 
 //RUN
 func (a *App) Run(addr string) {
-	log.Fatal(http.ListenAndServe(addr, a.Router))
+	log.Fatal(http.ListenAndServe(addr, handlers.CORS()(a.Router)))
 }
 
 //ROUTES
