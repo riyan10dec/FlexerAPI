@@ -26,7 +26,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	jwt "github.com/dgrijalva/jwt-go"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/gorilla/handlers"
+	handlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -62,7 +62,8 @@ func (a *App) Initialize() { //user, password, host, port, dbname, screenshotSto
 
 //RUN
 func (a *App) Run(addr string) {
-	log.Fatal(http.ListenAndServe(addr, handlers.CORS()(a.Router)))
+	corsObj := handlers.AllowedOrigins([]string{"*"})
+	log.Fatal(http.ListenAndServe(addr, handlers.CORS(corsObj)(a.Router)))
 }
 
 //ROUTES
@@ -85,6 +86,8 @@ func (a *App) initializeRoutes() {
 	a.Router.Handle("/cms/EmployeeTree/ChangeSuperior", jwtMiddleware.Handler(http.HandlerFunc(a.EmployeeTreeChangeSuperior))).Methods("POST")
 	a.Router.Handle("/cms/EmailValidation", jwtMiddleware.Handler(http.HandlerFunc(a.EmailValidation))).Methods("POST")
 	a.Router.Handle("/cms/GetAllEmployees/{userID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetAllEmployees))).Methods("GET")
+	a.Router.Handle("/cms/GetAllDepartments/{clientID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetAllDepartment))).Methods("GET")
+	a.Router.Handle("/cms/GetActiveDepartments/{clientID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetActiveDepartment))).Methods("GET")
 }
 
 //HANDLERS
@@ -643,6 +646,88 @@ func (a *App) GetAllEmployees(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	result := map[string]interface{}{"employees": res}
+	respondWithJSON(w, http.StatusOK, result)
+}
+
+//--Department
+func (a *App) SaveDepartment(w http.ResponseWriter, r *http.Request) {
+	var Department model.Department
+	decoder := json.NewDecoder(r.Body)
+	defer r.Body.Close()
+	if err := decoder.Decode(&Department); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+	department := model.Department{
+		ClientID:             Department.ClientID,
+		DepartmentsSeparator: strings.Join(Department.DepartmentList, "|"),
+		EntryBy:              Department.EntryBy,
+	}
+
+	if err := department.SaveDepartment(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
+	}
+	if department.ResultCode != 1 {
+		respondWithError(w, http.StatusInternalServerError, department.ResultDescription, department.ResultCode)
+		return
+	}
+	result := map[string]interface{}{"status": 1}
+	respondWithJSON(w, http.StatusOK, result)
+}
+
+func (a *App) GetActiveDepartment(w http.ResponseWriter, r *http.Request) {
+	var Department model.Department
+	vars := mux.Vars(r)
+	var err error
+	Department.ClientID, err = strconv.Atoi(vars["clientID"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+	department := model.Department{
+		ClientID: Department.ClientID,
+	}
+	var ds []model.Department
+	if err, ds = department.GetActiveDepartments(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
+	}
+
+	var res []string
+	for _, d := range ds {
+		res = append(res, d.DepartmentName)
+	}
+	result := map[string]interface{}{"status": 1, "departments": res}
+	respondWithJSON(w, http.StatusOK, result)
+}
+
+func (a *App) GetAllDepartment(w http.ResponseWriter, r *http.Request) {
+	var Department model.Department
+	vars := mux.Vars(r)
+	var err error
+	Department.ClientID, err = strconv.Atoi(vars["clientID"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+	department := model.Department{
+		ClientID: Department.ClientID,
+	}
+	var ds []model.Department
+	if err, ds = department.GetAllDepartments(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
+	}
+
+	var res []map[string]interface{}
+	for _, d := range ds {
+		res = append(res, map[string]interface{}{
+			"selected":       d.Selected,
+			"departmentName": d.DepartmentName,
+		})
+	}
+	result := map[string]interface{}{"status": 1, "departments": res}
 	respondWithJSON(w, http.StatusOK, result)
 }
 
