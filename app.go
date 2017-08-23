@@ -118,6 +118,7 @@ func (a *App) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := login.DoLogin(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
 	}
 
 	if login.ResultCode == 1 {
@@ -126,6 +127,7 @@ func (a *App) Login(w http.ResponseWriter, r *http.Request) {
 		respondWithJSON(w, http.StatusOK, result)
 	} else {
 		respondWithError(w, http.StatusInternalServerError, login.ResultDescription, login.ResultCode)
+		return
 	}
 }
 
@@ -146,6 +148,7 @@ func (a *App) Logout(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := logout.DoLogout(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
 	}
 
 	if logout.ResultCode == 1 {
@@ -153,6 +156,7 @@ func (a *App) Logout(w http.ResponseWriter, r *http.Request) {
 		respondWithJSON(w, http.StatusOK, result)
 	} else {
 		respondWithError(w, http.StatusInternalServerError, logout.ResultDescription, logout.ResultCode)
+		return
 	}
 }
 
@@ -179,16 +183,19 @@ func (a *App) AddActivity(w http.ResponseWriter, r *http.Request) {
 	transactions = Session.Transactions
 	if err := Session.FrontCheckSession(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
 	}
 	//Preparing
 	tx, err := a.DB.Begin()
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
 	}
 	defer tx.Rollback()
 	stmt, err := a.DB.Prepare(query.SearchQuery("createTransactionQuery"))
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
 	}
 	defer stmt.Close()
 	for _, transaction := range transactions {
@@ -211,10 +218,12 @@ func (a *App) AddActivity(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			tx.Rollback()
 			respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+			return
 		}
 		if transaction.ResultCode != 1 {
 			tx.Rollback()
 			respondWithError(w, http.StatusInternalServerError, transaction.ResultDescription, transaction.ResultCode)
+			return
 		}
 	}
 	tx.Commit()
@@ -233,6 +242,7 @@ func (a *App) GetTask(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := session.GetTasks(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
 	}
 
 	result := map[string]interface{}{"task": session.Tasks}
@@ -265,6 +275,7 @@ func (a *App) AddTask(w http.ResponseWriter, r *http.Request) {
 		respondWithJSON(w, http.StatusOK, result)
 	} else {
 		respondWithError(w, http.StatusInternalServerError, task.ResultDescription, task.ResultCode)
+		return
 	}
 }
 
@@ -290,6 +301,7 @@ func (a *App) AddActivityScreenshot(w http.ResponseWriter, r *http.Request) {
 
 	if err := Session.FrontCheckSession(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
 	}
 	if !checkValidityPeriod(Screenshot.ScreenshotDate, Session.StartTime, Session.EndTime) {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload : ScreenshotDate outside Session Date", -2)
@@ -299,9 +311,11 @@ func (a *App) AddActivityScreenshot(w http.ResponseWriter, r *http.Request) {
 	//Getting Parameter
 	if err := Screenshot.GetScreenshotParam(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
 	}
 	if Screenshot.ResultCode != 1 {
 		respondWithError(w, http.StatusInternalServerError, Screenshot.ResultDescription, Screenshot.ResultCode)
+		return
 	}
 
 	//Start Uploading File
@@ -309,13 +323,16 @@ func (a *App) AddActivityScreenshot(w http.ResponseWriter, r *http.Request) {
 	Screenshot.Filename, Screenshot.ResultDescription, Screenshot.ResultCode = a.UploadToGoogleCloud(filedata, Screenshot.Filename)
 	if Screenshot.ResultCode != 1 {
 		respondWithError(w, http.StatusInternalServerError, Screenshot.ResultDescription, Screenshot.ResultCode)
+		return
 	}
 	//Reporting Status
 	if err := Screenshot.ReportScreenshotStatus(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
 	}
 	if Screenshot.ResultCode != 1 {
 		respondWithError(w, http.StatusInternalServerError, Screenshot.ResultDescription, -1)
+		return
 	}
 
 	result := map[string]interface{}{
@@ -337,6 +354,7 @@ func (a *App) CMSLogin(w http.ResponseWriter, r *http.Request) {
 	login := model.Login{Email: loginX.Email, Password: loginX.Password}
 	if err := login.DoLoginCMS(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
 	}
 
 	token := GetToken(strconv.Itoa(int(login.Session.SessionID)))
@@ -368,9 +386,11 @@ func (a *App) AddEmployee(w http.ResponseWriter, r *http.Request) {
 
 	if err := user.AddEmployee(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
 	}
 	if user.ResultCode != 1 {
 		respondWithError(w, http.StatusInternalServerError, user.ResultDescription, user.ResultCode)
+		return
 	}
 	result := map[string]interface{}{"status": 1}
 	respondWithJSON(w, http.StatusOK, result)
@@ -403,6 +423,7 @@ func (a *App) EditEmployee(w http.ResponseWriter, r *http.Request) {
 	}
 	if user.ResultCode != 1 {
 		respondWithError(w, http.StatusInternalServerError, user.ResultDescription, user.ResultCode)
+		return
 	}
 	result := map[string]interface{}{"status": 1}
 	respondWithJSON(w, http.StatusOK, result)
@@ -424,6 +445,7 @@ func (a *App) GetActiveSubs(w http.ResponseWriter, r *http.Request) {
 
 	if err := user.GetActiveSubs(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
 	}
 	var res []map[string]interface{}
 	for _, u := range user.ReferenceUser {
@@ -457,6 +479,7 @@ func (a *App) CheckSubscription(w http.ResponseWriter, r *http.Request) {
 
 	if err := client.CheckSubscription(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
 	}
 	result := map[string]interface{}{
 		"subscriptionType":   client.SubscriptionType,
@@ -487,6 +510,7 @@ func (a *App) EmployeeTreeGetFirstLevel(w http.ResponseWriter, r *http.Request) 
 
 	if err := user.EmployeeTreeFirstLevel(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
 	}
 	var res []map[string]interface{}
 	for _, u := range user.ReferenceUser {
@@ -518,6 +542,7 @@ func (a *App) EmployeeTreeGetChild(w http.ResponseWriter, r *http.Request) {
 
 	if err := user.EmployeeTreeSubs(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
 	}
 	var res []map[string]interface{}
 	for _, u := range user.ReferenceUser {
@@ -547,6 +572,7 @@ func (a *App) EmployeeTreeChangeSuperior(w http.ResponseWriter, r *http.Request)
 
 	if _, err := user.EmployeeTreeChangeSuperior(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
 	}
 	// if res != sql.Result. {
 	// 	respondWithError(w, http.StatusInternalServerError, user.ResultDescription, user.ResultCode)
@@ -571,6 +597,7 @@ func (a *App) EmailValidation(w http.ResponseWriter, r *http.Request) {
 
 	if err := user.EmailValidation(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
 	}
 	// if res != sql.Result. {
 	// 	respondWithError(w, http.StatusInternalServerError, user.ResultDescription, user.ResultCode)
@@ -601,6 +628,7 @@ func (a *App) GetAllEmployees(w http.ResponseWriter, r *http.Request) {
 
 	if err := user.GetEmployees(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
 	}
 	var res []map[string]interface{}
 	for _, u := range user.ReferenceUser {
@@ -656,7 +684,10 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	response, _ := json.Marshal(payload)
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, GET, POST, PUT")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control")
 	w.WriteHeader(code)
 	w.Write(response)
 }
