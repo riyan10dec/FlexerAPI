@@ -31,6 +31,9 @@ type User struct {
 	LastActivity      sql.NullString `json:"lastActivity"`
 	ReferenceUser     []User
 	ActiveOnly        bool `json:"activeOnly"`
+	Features          []Feature
+	Activities        []Activity
+	SubscriptionID    int `json:"subscriptionID"`
 }
 
 //DoLogin : Login Func
@@ -127,6 +130,7 @@ func (u *User) EmployeeTreeFirstLevel(db *sql.DB) error {
 	}
 	return nil
 }
+
 func (u *User) EmployeeTreeSubs(db *sql.DB) error {
 	var q string
 	if u.ActiveOnly == true {
@@ -155,6 +159,7 @@ func (u *User) EmployeeTreeSubs(db *sql.DB) error {
 	}
 	return nil
 }
+
 func (u *User) EmployeeTreeChangeSuperior(db *sql.DB) (sql.Result, error) {
 	tx, err := db.Begin()
 	if err != nil {
@@ -207,15 +212,89 @@ func (u *User) GetEmployees(db *sql.DB) error {
 	}
 	return nil
 }
+
 func (u *User) EmailValidation(db *sql.DB) error {
 	return db.QueryRow(query.SearchQuery("cmsEmailValidation"),
 		u.ClientID,
 		u.Email,
 		u.UserID).Scan(&u.ResultDescription)
 }
+
 func (u *User) ChangePassword(db *sql.DB) error {
 	return db.QueryRow(query.SearchQuery("cmsChangePassword"),
 		u.UserID,
 		u.OldPassword,
 		u.NewPassword).Scan(&u.ResultCode, &u.ResultDescription)
+}
+
+func (u *User) GetFeatures(db *sql.DB) error {
+	rows, err := db.Query(query.SearchQuery("cmsGetFeatures"),
+		u.UserID, u.PositionName, u.SubscriptionID,
+	)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var f Feature
+		err := rows.Scan(&f.FeatureID, &f.FeatureName, &f.FeatureType, &f.FeatureDescription)
+		if err != nil {
+			return err
+		}
+		u.Features = append(u.Features, f)
+	}
+	err = rows.Err()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (u *User) GetSubs(db *sql.DB) error {
+	rows, err := db.Query(query.SearchQuery("cmsGetSubs"),
+		u.UserID,
+	)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var u2 User
+		err := rows.Scan(&u2.UserID,
+			&u2.EmployeeID,
+			&u2.UserName,
+			&u2.PositionName,
+			&u2.DepartmentName,
+			&u2.ActiveStatus,
+			&u2.LastActivity)
+		if err != nil {
+			return err
+		}
+		u.ReferenceUser = append(u.ReferenceUser, u2)
+	}
+	err = rows.Err()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (u *User) GetAllActivities(db *sql.DB) error {
+	rows, err := db.Query(query.SearchQuery("cmsGetActivities"),
+		u.UserID,
+	)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var a Activity
+		err := rows.Scan(&a.ActivityName, &a.ActivityType, &a.Category, &a.Classification, &a.Utilization)
+		if err != nil {
+			return err
+		}
+		u.Activities = append(u.Activities, a)
+	}
+	err = rows.Err()
+	if err != nil {
+		return err
+	}
+	return nil
 }

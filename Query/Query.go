@@ -128,6 +128,22 @@ var q = []Query{
 		key:   "cmsChangePassword",
 		query: `call sp_cms_change_password (?,?,?)`,
 	},
+	Query{
+		key:   "loginCMSQuery",
+		query: `call sp_cms_login (?,?)`,
+	},
+	Query{
+		key:   "cmsGetFeatures",
+		query: `call sp_cms_get_features (?,?,?)`,
+	},
+	Query{
+		key:   "cmsGetSubs",
+		query: `call sp_cms_get_subs (?)`,
+	},
+	Query{
+		key:   "cmsGetFeatures",
+		query: `call cmsGetActivities (?)`,
+	},
 }
 
 func SearchQuery(key string) string {

@@ -62,8 +62,10 @@ func (a *App) Initialize() { //user, password, host, port, dbname, screenshotSto
 
 //RUN
 func (a *App) Run(addr string) {
-	corsObj := handlers.AllowedOrigins([]string{"*"})
-	log.Fatal(http.ListenAndServe(addr, handlers.CORS(corsObj)(a.Router)))
+	OriginObj := handlers.AllowedOrigins([]string{"*"})
+	HeadersObj := handlers.AllowedHeaders([]string{"X-Requested-With"})
+	MethodsObj := handlers.AllowedMethods([]string{"GET", "HEAD", "PUT", "OPTIONS"})
+	log.Fatal(http.ListenAndServe(addr, handlers.CORS(OriginObj, HeadersObj, MethodsObj)(a.Router)))
 }
 
 //ROUTES
@@ -88,6 +90,10 @@ func (a *App) initializeRoutes() {
 	a.Router.Handle("/cms/GetAllEmployees/{userID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetAllEmployees))).Methods("GET")
 	a.Router.Handle("/cms/GetAllDepartments/{clientID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetAllDepartment))).Methods("GET")
 	a.Router.Handle("/cms/GetActiveDepartments/{clientID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetActiveDepartment))).Methods("GET")
+	a.Router.Handle("/cms/ChangePassword", jwtMiddleware.Handler(http.HandlerFunc(a.ChangePassword))).Methods("POST")
+	a.Router.Handle("/cms/GetFeatures/{userID}/{positionName}/{subscriptionID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetAllFeatures))).Methods("GET")
+	a.Router.Handle("/cms/GetSubs/{userID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetSubs))).Methods("GET")
+	a.Router.Handle("/cms/GetAllActivities/{userID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetAllActivities))).Methods("GET")
 }
 
 //HANDLERS
@@ -728,6 +734,107 @@ func (a *App) GetAllDepartment(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	result := map[string]interface{}{"status": 1, "departments": res}
+	respondWithJSON(w, http.StatusOK, result)
+}
+
+func (a *App) GetAllFeatures(w http.ResponseWriter, r *http.Request) {
+	//vars := mux.Vars(r)
+	var User model.User
+	vars := mux.Vars(r)
+	var err error
+	User.UserID, err = strconv.Atoi(vars["userID"])
+	User.PositionName = vars["positionName"]
+	User.SubscriptionID, err = strconv.Atoi(vars["subscriptionID"])
+	user := model.User{
+		UserID:         User.UserID,
+		PositionName:   User.PositionName,
+		SubscriptionID: User.SubscriptionID,
+	}
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+
+	if err := user.GetFeatures(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
+	}
+	var res []map[string]interface{}
+	for _, f := range user.Features {
+		res = append(res, map[string]interface{}{
+			"featureID":          f.FeatureID,
+			"featureName":        f.FeatureName,
+			"featureType":        f.FeatureType,
+			"featureDescription": f.FeatureDescription,
+		})
+	}
+	result := map[string]interface{}{"features": res}
+	respondWithJSON(w, http.StatusOK, result)
+}
+
+func (a *App) GetSubs(w http.ResponseWriter, r *http.Request) {
+	//vars := mux.Vars(r)
+	var User model.User
+	vars := mux.Vars(r)
+	var err error
+	User.UserID, err = strconv.Atoi(vars["userID"])
+	user := model.User{
+		UserID: User.UserID,
+	}
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+
+	if err := user.GetSubs(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
+	}
+	var res []map[string]interface{}
+	for _, u := range user.ReferenceUser {
+		res = append(res, map[string]interface{}{
+			"userID":         u.UserID,
+			"employeeID":     u.EmployeeID,
+			"userName":       u.UserName,
+			"positionName":   u.PositionName,
+			"departmentName": u.DepartmentName,
+			"activeStatus":   u.ActiveStatus,
+			"lastActivity":   u.LastActivity.String,
+		})
+	}
+	result := map[string]interface{}{"employees": res}
+	respondWithJSON(w, http.StatusOK, result)
+}
+
+func (a *App) GetAllActivities(w http.ResponseWriter, r *http.Request) {
+	//vars := mux.Vars(r)
+	var User model.User
+	vars := mux.Vars(r)
+	var err error
+	User.UserID, err = strconv.Atoi(vars["userID"])
+	user := model.User{
+		UserID: User.UserID,
+	}
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+
+	if err := user.GetAllActivities(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
+	}
+	var res []map[string]interface{}
+	for _, a := range user.Activities {
+		res = append(res, map[string]interface{}{
+			"activityName":   a.ActivityName,
+			"activityType":   a.ActivityType,
+			"category":       a.Category,
+			"classification": a.Classification,
+			"utilization":    a.Utilization,
+		})
+	}
+	result := map[string]interface{}{"activities": res}
 	respondWithJSON(w, http.StatusOK, result)
 }
 
