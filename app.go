@@ -70,6 +70,7 @@ func (a *App) Run(addr string) {
 
 //ROUTES
 func (a *App) initializeRoutes() {
+	a.Router.HandleFunc("/ping", a.Ping).Methods("GET")
 	a.Router.HandleFunc("/login", a.Login).Methods("POST")
 	a.Router.Handle("/logout", jwtMiddleware.Handler(http.HandlerFunc(a.Logout))).Methods("POST")
 	a.Router.Handle("/addActivity", jwtMiddleware.Handler(http.HandlerFunc(a.AddActivity))).Methods("POST")
@@ -97,6 +98,10 @@ func (a *App) initializeRoutes() {
 }
 
 //HANDLERS
+
+func (a *App) Ping(w http.ResponseWriter, r *http.Request) {
+	respondWithJSON(w, http.StatusOK, "pong")
+}
 
 /* Login :
 - Email: string
