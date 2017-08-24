@@ -838,6 +838,34 @@ func (a *App) GetAllActivities(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, result)
 }
 
+func (a *App) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	//vars := mux.Vars(r)
+	var User model.User
+	decoder := json.NewDecoder(r.Body)
+	defer r.Body.Close()
+	if err := decoder.Decode(&User); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+	user := model.User{
+		UserID:      User.UserID,
+		OldPassword: User.OldPassword,
+		NewPassword: User.NewPassword,
+	}
+	if err := user.ChangePassword(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
+	}
+
+	if user.ResultCode == 1 {
+		result := map[string]interface{}{"status": user.ResultCode, "description": user.ResultDescription}
+		respondWithJSON(w, http.StatusOK, result)
+	} else {
+		respondWithError(w, http.StatusInternalServerError, user.ResultDescription, user.ResultCode)
+		return
+	}
+}
+
 //TOKEN
 func GetToken(Username string) string {
 
