@@ -10,7 +10,6 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -63,7 +62,7 @@ func (a *App) Initialize() { //user, password, host, port, dbname, screenshotSto
 
 //RUN
 func (a *App) Run(addr string) {
-	OriginObj := handlers.AllowedOrigins([]string{os.Getenv("ORIGIN_ALLOWED")})
+	OriginObj := handlers.AllowedOrigins([]string{"http://localhost:4200"})
 	HeadersObj := handlers.AllowedHeaders([]string{"X-Requested-With", "Authorization", "Content-Type", "X-Auth-Token", "Origin"})
 	MethodsObj := handlers.AllowedMethods([]string{"GET", "HEAD", "PUT", "OPTIONS"})
 	CredObj := handlers.AllowCredentials()
