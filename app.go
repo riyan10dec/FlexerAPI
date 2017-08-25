@@ -91,7 +91,7 @@ func (a *App) initializeRoutes() {
 	a.Router.Handle("/cms/EmployeeTree/ChangeSuperior", jwtMiddleware.Handler(http.HandlerFunc(a.EmployeeTreeChangeSuperior))).Methods("POST")
 	a.Router.Handle("/cms/EmailValidation", jwtMiddleware.Handler(http.HandlerFunc(a.EmailValidation))).Methods("POST")
 	a.Router.Handle("/cms/GetAllEmployees/{userID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetAllEmployees))).Methods("GET")
-	a.Router.Handle("/cms/GetAllDepartments/{clientID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetAllDepartment))).Methods("GET")
+	a.Router.Handle("/cms/GetAllDepartments/{clientID}", jwtMiddleware.Handler(corsHandler(http.HandlerFunc(a.GetAllDepartment)))).Methods("GET")
 	a.Router.Handle("/cms/GetActiveDepartments/{clientID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetActiveDepartment))).Methods("GET")
 	a.Router.Handle("/cms/ChangePassword", jwtMiddleware.Handler(http.HandlerFunc(a.ChangePassword))).Methods("POST")
 	a.Router.Handle("/cms/GetFeatures/{userID}/{positionName}/{subscriptionID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetAllFeatures))).Methods("GET")
@@ -1021,4 +1021,13 @@ func SelectFields(s interface{}, fields ...string) map[string]interface{} {
 		}
 	}
 	return out
+}
+func corsHandler(h http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "OPTIONS" {
+			//handle preflight in here
+		} else {
+			h.ServeHTTP(w, r)
+		}
+	}
 }
