@@ -328,15 +328,15 @@ func (a *App) AddActivityScreenshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if Screenshot.ResultCode != 1 {
-		respondWithError(w, http.StatusInternalServerError, Screenshot.ResultDescription, Screenshot.ResultCode)
+		respondWithError(w, http.StatusInternalServerError, Screenshot.ResultDescription.String, Screenshot.ResultCode)
 		return
 	}
 
 	//Start Uploading File
 	//Screenshot.ResultDescription, Screenshot.ResultCode = a.UploadToS3(file, Screenshot.Filename)
-	Screenshot.Filename, Screenshot.ResultDescription, Screenshot.ResultCode = a.UploadToGoogleCloud(filedata, Screenshot.Filename)
+	Screenshot.Filename.String, Screenshot.ResultDescription.String, Screenshot.ResultCode = a.UploadToGoogleCloud(filedata, Screenshot.Filename.String)
 	if Screenshot.ResultCode != 1 {
-		respondWithError(w, http.StatusInternalServerError, Screenshot.ResultDescription, Screenshot.ResultCode)
+		respondWithError(w, http.StatusInternalServerError, Screenshot.ResultDescription.String, Screenshot.ResultCode)
 		return
 	}
 	//Reporting Status
@@ -345,7 +345,7 @@ func (a *App) AddActivityScreenshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if Screenshot.ResultCode != 1 {
-		respondWithError(w, http.StatusInternalServerError, Screenshot.ResultDescription, -1)
+		respondWithError(w, http.StatusInternalServerError, Screenshot.ResultDescription.String, -1)
 		return
 	}
 

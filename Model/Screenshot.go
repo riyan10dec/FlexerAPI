@@ -11,9 +11,9 @@ type Screenshot struct {
 	ScreenshotDate    string `json:"screenshotDate"`
 	ActivityName      string `json:"activityName"`
 	ActivityType      string `json:"activityType"`
-	Filename          string
+	Filename          sql.NullString
 	ResultCode        int
-	ResultDescription string
+	ResultDescription sql.NullString
 }
 
 //GetScreenshotParam : GetScreenshotParam Func
