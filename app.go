@@ -1025,7 +1025,8 @@ func SelectFields(s interface{}, fields ...string) map[string]interface{} {
 func corsHandler(h http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
-			//handle preflight in here
+			log.Println("OPT CORS")
+			h.ServeHTTP(w, r)
 		} else {
 			h.ServeHTTP(w, r)
 		}
