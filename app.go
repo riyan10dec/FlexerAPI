@@ -310,8 +310,8 @@ func (a *App) AddActivityScreenshot(w http.ResponseWriter, r *http.Request) {
 	Session.SessionID, _ = strconv.ParseInt(r.FormValue("sessionID"), 10, 64)
 	Screenshot.SessionID = Session.SessionID
 	Screenshot.ScreenshotDate = SyncDate(r.FormValue("screenshotDate"), Session.ClientDate, Session.ServerDate)
-	Screenshot.ActivityName = r.FormValue("activityName")
-	Screenshot.ActivityType = r.FormValue("activityType")
+	Screenshot.ActivityName.String = r.FormValue("activityName")
+	Screenshot.ActivityType.String = r.FormValue("activityType")
 
 	if err := Session.FrontCheckSession(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
