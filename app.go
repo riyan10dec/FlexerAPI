@@ -64,7 +64,7 @@ func (a *App) Initialize() { //user, password, host, port, dbname, screenshotSto
 //RUN
 func (a *App) Run(addr string) {
 	OriginObj := handlers.AllowedOrigins([]string{os.Getenv("ORIGIN_ALLOWED")})
-	HeadersObj := handlers.AllowedHeaders([]string{"X-Requested-With", "Authorization"})
+	HeadersObj := handlers.AllowedHeaders([]string{"X-Requested-With", "Authorization", "Content-Type", "X-Auth-Token", "Origin"})
 	MethodsObj := handlers.AllowedMethods([]string{"GET", "HEAD", "PUT", "OPTIONS"})
 	log.Fatal(http.ListenAndServe(addr, handlers.CORS(OriginObj, HeadersObj, MethodsObj)(a.Router)))
 }
