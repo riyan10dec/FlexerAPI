@@ -736,6 +736,7 @@ func (a *App) GetAllDepartment(w http.ResponseWriter, r *http.Request) {
 		res = append(res, map[string]interface{}{
 			"selected":       d.Selected,
 			"departmentName": d.DepartmentName,
+			"employeeCount":  d.EmployeeCount,
 		})
 	}
 	result := map[string]interface{}{"status": 1, "departments": res}

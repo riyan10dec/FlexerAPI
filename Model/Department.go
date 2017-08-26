@@ -12,8 +12,9 @@ type Department struct {
 	EntryBy              string   `json:"entryBy"`
 	ResultCode           int
 	ResultDescription    string
-	Selected             int    `json:selected`
-	DepartmentName       string `json:departmentName`
+	Selected             int    `json:"selected"`
+	DepartmentName       string `json:"departmentName"`
+	EmployeeCount        int    `json:"employeeCount"`
 }
 
 func (d *Department) SaveDepartment(db *sql.DB) error {
@@ -35,7 +36,7 @@ func (d *Department) GetAllDepartments(db *sql.DB) (error, []Department) {
 	for rows.Next() {
 		var d Department
 		err := rows.Scan(&d.Selected,
-			&d.DepartmentName)
+			&d.DepartmentName, &d.EmployeeCount)
 		if err != nil {
 			return err, nil
 		}
