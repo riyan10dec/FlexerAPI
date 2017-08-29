@@ -37,7 +37,6 @@ func (l *Login) DoLogin(db *sql.DB) error {
 		l.City,
 		l.Lat,
 		l.Long,
-		l.ClientTime,
 		l.GMTDiff).Scan(&l.ResultCode, &l.ResultDescription, &l.Session.SessionID)
 }
 
