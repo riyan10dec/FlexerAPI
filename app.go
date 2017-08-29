@@ -95,6 +95,8 @@ func (a *App) initializeRoutes() {
 	a.Router.Handle("/cms/GetFeatures/{userID}/{positionName}/{subscriptionID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetAllFeatures))).Methods("GET")
 	a.Router.Handle("/cms/GetSubs/{userID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetSubs))).Methods("GET")
 	a.Router.Handle("/cms/GetAllActivities/{userID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetAllActivities))).Methods("GET")
+	a.Router.Handle("/cms/SaveDepartment", jwtMiddleware.Handler(http.HandlerFunc(a.SaveDepartment))).Methods("POST")
+	a.Router.Handle("/cms/EditDepartment", jwtMiddleware.Handler(http.HandlerFunc(a.EditDepartment))).Methods("POST")
 }
 
 //HANDLERS
@@ -129,6 +131,8 @@ func (a *App) Login(w http.ResponseWriter, r *http.Request) {
 		City:         loginX.City,
 		Lat:          loginX.Lat,
 		Long:         loginX.Long,
+		ClientTime:   loginX.ClientTime,
+		GMTDiff:      loginX.GMTDiff,
 	}
 	if err := login.DoLogin(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
@@ -672,9 +676,14 @@ func (a *App) SaveDepartment(w http.ResponseWriter, r *http.Request) {
 	department := model.Department{
 		ClientID:             Department.ClientID,
 		DepartmentsSeparator: strings.Join(Department.DepartmentList, "|"),
+		OldDepartmentNames:   Department.OldDepartmentNames,
+		NewDepartmentNames:   Department.NewDepartmentNames,
 		EntryBy:              Department.EntryBy,
 	}
-
+	if err := department.EditDepartment(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
+	}
 	if err := department.SaveDepartment(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
 		return

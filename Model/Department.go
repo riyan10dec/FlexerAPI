@@ -9,12 +9,15 @@ type Department struct {
 	ClientID             int      `json:"clientID"`
 	DepartmentList       []string `json:"departmentList"` //list of departments, separate by |
 	DepartmentsSeparator string   `json:"departmentSeparator"`
-	EntryBy              string   `json:"entryBy"`
+	EntryBy              int      `json:"entryBy"`
 	ResultCode           int
 	ResultDescription    string
-	Selected             int    `json:"selected"`
-	DepartmentName       string `json:"departmentName"`
-	EmployeeCount        int    `json:"employeeCount"`
+	Selected             int      `json:"selected"`
+	DepartmentName       string   `json:"departmentName"`
+	EmployeeCount        int      `json:"employeeCount"`
+	OldDepartmentNames   []string `json:"oldDepartmentNames"`
+	NewDepartmentNames   []string `json:"newDepartmentNames"`
+	ChangedUserIDs       []int    `json:"changedUserIDs"`
 }
 
 func (d *Department) SaveDepartment(db *sql.DB) error {
@@ -24,7 +27,22 @@ func (d *Department) SaveDepartment(db *sql.DB) error {
 		&d.ResultCode,
 		&d.ResultDescription)
 }
-
+func (d *Department) EditDepartment(db *sql.DB) error {
+	var err error
+	db.Begin()
+	for i := range d.OldDepartmentNames {
+		for j := range d.ChangedUserIDs {
+			err = db.QueryRow(query.SearchQuery("cmsEditDepartment"),
+				d.ClientID, d.OldDepartmentNames[i], d.NewDepartmentNames[i], d.EntryBy).Scan(
+				&d.ResultCode,
+				&d.ResultDescription)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
 func (d *Department) GetAllDepartments(db *sql.DB) (error, []Department) {
 	rows, err := db.Query(query.SearchQuery("cmsGetAllDepartments"),
 		d.ClientID)

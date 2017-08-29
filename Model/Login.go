@@ -22,6 +22,8 @@ type Login struct {
 	ResultCode        int
 	ResultDescription string
 	PositionName      string
+	ClientTime        string
+	GMTDiff           float32 `json:"gmtDiff"`
 }
 
 //DoLogin : Login Func
@@ -34,7 +36,9 @@ func (l *Login) DoLogin(db *sql.DB) error {
 		l.IPAddress,
 		l.City,
 		l.Lat,
-		l.Long).Scan(&l.ResultCode, &l.ResultDescription, &l.Session.SessionID)
+		l.Long,
+		l.ClientTime,
+		l.GMTDiff).Scan(&l.ResultCode, &l.ResultDescription, &l.Session.SessionID)
 }
 
 //DoLoginCMS : CMS Login Func
