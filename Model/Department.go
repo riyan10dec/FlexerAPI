@@ -31,14 +31,12 @@ func (d *Department) EditDepartment(db *sql.DB) error {
 	var err error
 	db.Begin()
 	for i := range d.OldDepartmentNames {
-		for j := range d.ChangedUserIDs {
-			err = db.QueryRow(query.SearchQuery("cmsEditDepartment"),
-				d.ClientID, d.OldDepartmentNames[i], d.NewDepartmentNames[i], d.EntryBy).Scan(
-				&d.ResultCode,
-				&d.ResultDescription)
-			if err != nil {
-				return err
-			}
+		err = db.QueryRow(query.SearchQuery("cmsEditDepartment"),
+			d.ClientID, d.OldDepartmentNames[i], d.NewDepartmentNames[i], d.EntryBy).Scan(
+			&d.ResultCode,
+			&d.ResultDescription)
+		if err != nil {
+			return err
 		}
 	}
 	return nil

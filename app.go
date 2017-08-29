@@ -96,7 +96,7 @@ func (a *App) initializeRoutes() {
 	a.Router.Handle("/cms/GetSubs/{userID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetSubs))).Methods("GET")
 	a.Router.Handle("/cms/GetAllActivities/{userID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetAllActivities))).Methods("GET")
 	a.Router.Handle("/cms/SaveDepartment", jwtMiddleware.Handler(http.HandlerFunc(a.SaveDepartment))).Methods("POST")
-	a.Router.Handle("/cms/EditDepartment", jwtMiddleware.Handler(http.HandlerFunc(a.EditDepartment))).Methods("POST")
+	//a.Router.Handle("/cms/EditDepartment", jwtMiddleware.Handler(http.HandlerFunc(a.EditDepartment))).Methods("POST")
 }
 
 //HANDLERS
