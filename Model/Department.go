@@ -18,6 +18,7 @@ type Department struct {
 	OldDepartmentNames   []string `json:"oldDepartmentNames"`
 	NewDepartmentNames   []string `json:"newDepartmentNames"`
 	ChangedUserIDs       []int    `json:"changedUserIDs"`
+	GMTDiff              float32  `json:"gmtDiff"`
 }
 
 func (d *Department) SaveDepartment(db *sql.DB) error {
@@ -43,7 +44,7 @@ func (d *Department) EditDepartment(db *sql.DB) error {
 }
 func (d *Department) GetAllDepartments(db *sql.DB) (error, []Department) {
 	rows, err := db.Query(query.SearchQuery("cmsGetAllDepartments"),
-		d.ClientID)
+		d.ClientID, d.GMTDiff)
 	if err != nil {
 		return err, nil
 	}
