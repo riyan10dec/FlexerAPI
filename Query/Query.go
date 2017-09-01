@@ -122,7 +122,7 @@ var q = []Query{
 	},
 	Query{
 		key:   "cmsGetAllDepartments",
-		query: `call sp_cms_get_all_departments (?)`,
+		query: `call sp_cms_get_all_departments (?,?)`,
 	},
 	Query{
 		key:   "cmsGetActiveDepartments",
