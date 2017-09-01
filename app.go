@@ -89,7 +89,7 @@ func (a *App) initializeRoutes() {
 	a.Router.Handle("/cms/EmployeeTree/ChangeSuperior", jwtMiddleware.Handler(http.HandlerFunc(a.EmployeeTreeChangeSuperior))).Methods("POST")
 	a.Router.Handle("/cms/EmailValidation", jwtMiddleware.Handler(http.HandlerFunc(a.EmailValidation))).Methods("POST")
 	a.Router.Handle("/cms/GetAllEmployees/{userID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetAllEmployees))).Methods("GET")
-	a.Router.Handle("/cms/GetAllDepartments/{clientID}", jwtMiddleware.Handler(corsHandler(http.HandlerFunc(a.GetAllDepartment)))).Methods("GET")
+	a.Router.Handle("/cms/GetAllDepartments/{clientID}/{gmtDiff}", jwtMiddleware.Handler(corsHandler(http.HandlerFunc(a.GetAllDepartment)))).Methods("GET")
 	a.Router.Handle("/cms/GetActiveDepartments/{clientID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetActiveDepartment))).Methods("GET")
 	a.Router.Handle("/cms/ChangePassword", jwtMiddleware.Handler(http.HandlerFunc(a.ChangePassword))).Methods("POST")
 	a.Router.Handle("/cms/GetFeatures/{userID}/{positionName}/{subscriptionID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetAllFeatures))).Methods("GET")
@@ -728,6 +728,7 @@ func (a *App) GetAllDepartment(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	var err error
 	Department.ClientID, err = strconv.Atoi(vars["clientID"])
+	Department.ClientID, err = strconv.Atoi(vars["gmtDiff"])
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
 		return
