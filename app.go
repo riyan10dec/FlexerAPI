@@ -217,9 +217,10 @@ func (a *App) AddActivity(w http.ResponseWriter, r *http.Request) {
 	}
 	defer stmt.Close()
 	for _, transaction := range transactions {
+
 		//Convert Date
-		transaction.StartDate = SyncDate(transaction.StartDate, Session.ClientDate, Session.ServerDate)
-		transaction.EndDate = SyncDate(transaction.EndDate, Session.ClientDate, Session.ServerDate)
+		// transaction.StartDate = SyncDate(transaction.StartDate, Session.ClientDate, Session.ServerDate)
+		// transaction.EndDate = SyncDate(transaction.EndDate, Session.ClientDate, Session.ServerDate)
 		// if !checkValidityPeriod(transaction.StartDate, Session.StartTime, Session.EndTime) {
 		// 	continue
 		// }
@@ -313,7 +314,7 @@ func (a *App) AddActivityScreenshot(w http.ResponseWriter, r *http.Request) {
 	var Screenshot model.Screenshot
 	Session.SessionID, _ = strconv.ParseInt(r.FormValue("sessionID"), 10, 64)
 	Screenshot.SessionID = Session.SessionID
-	Screenshot.ScreenshotDate = SyncDate(r.FormValue("screenshotDate"), Session.ClientDate, Session.ServerDate)
+	Screenshot.ScreenshotDate = r.FormValue("screenshotDate")
 	Screenshot.ActivityName.String = r.FormValue("activityName")
 	Screenshot.ActivityType.String = r.FormValue("activityType")
 
