@@ -220,9 +220,9 @@ func (a *App) AddActivity(w http.ResponseWriter, r *http.Request) {
 		//Convert Date
 		transaction.StartDate = SyncDate(transaction.StartDate, Session.ClientDate, Session.ServerDate)
 		transaction.EndDate = SyncDate(transaction.EndDate, Session.ClientDate, Session.ServerDate)
-		if !checkValidityPeriod(transaction.StartDate, Session.StartTime, Session.EndTime) {
-			continue
-		}
+		// if !checkValidityPeriod(transaction.StartDate, Session.StartTime, Session.EndTime) {
+		// 	continue
+		// }
 		fmt.Println(transaction.StartDate)
 		err := stmt.QueryRow(
 			Session.SessionID,
@@ -321,10 +321,10 @@ func (a *App) AddActivityScreenshot(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
 		return
 	}
-	if !checkValidityPeriod(Screenshot.ScreenshotDate, Session.StartTime, Session.EndTime) {
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload : ScreenshotDate outside Session Date", -2)
-		return
-	}
+	// if !checkValidityPeriod(Screenshot.ScreenshotDate, Session.StartTime, Session.EndTime) {
+	// 	respondWithError(w, http.StatusBadRequest, "Invalid request payload : ScreenshotDate outside Session Date", -2)
+	// 	return
+	// }
 
 	//Getting Parameter
 	if err := Screenshot.GetScreenshotParam(a.DB); err != nil {
