@@ -728,7 +728,7 @@ func (a *App) GetAllDepartment(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	var err error
 	Department.ClientID, err = strconv.Atoi(vars["clientID"])
-	Department.ClientID, err = strconv.Atoi(vars["gmtDiff"])
+	Department.GMTDiff, err = strconv.ParseFloat(vars["gmtDiff"], 64)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
 		return

@@ -18,7 +18,7 @@ type Department struct {
 	OldDepartmentNames   []string `json:"oldDepartmentNames"`
 	NewDepartmentNames   []string `json:"newDepartmentNames"`
 	ChangedUserIDs       []int    `json:"changedUserIDs"`
-	GMTDiff              float32  `json:"gmtDiff"`
+	GMTDiff              float64  `json:"gmtDiff"`
 }
 
 func (d *Department) SaveDepartment(db *sql.DB) error {
