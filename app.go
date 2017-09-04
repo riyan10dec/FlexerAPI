@@ -239,11 +239,11 @@ func (a *App) AddActivity(w http.ResponseWriter, r *http.Request) {
 			respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
 			return
 		}
-		if transaction.ResultCode != 1 {
-			tx.Rollback()
-			respondWithError(w, http.StatusInternalServerError, transaction.ResultDescription, transaction.ResultCode)
-			return
-		}
+		// if transaction.ResultCode != 1 {
+		// 	tx.Rollback()
+		// 	respondWithError(w, http.StatusInternalServerError, transaction.ResultDescription, transaction.ResultCode)
+		// 	return
+		// }
 	}
 	tx.Commit()
 	result := map[string]interface{}{"status": 1, "description": "All Transaction Successfully Inserted"}
@@ -349,6 +349,7 @@ func (a *App) AddActivityScreenshot(w http.ResponseWriter, r *http.Request) {
 	}
 	//Reporting Status
 	if err := Screenshot.ReportScreenshotStatus(a.DB); err != nil {
+		log.Println(err)
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
 		return
 	}
