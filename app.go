@@ -319,6 +319,7 @@ func (a *App) AddActivityScreenshot(w http.ResponseWriter, r *http.Request) {
 	Screenshot.ActivityType.String = r.FormValue("activityType")
 
 	if err := Session.FrontCheckSession(a.DB); err != nil {
+		log.Println("front")
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
 		return
 	}
@@ -329,6 +330,7 @@ func (a *App) AddActivityScreenshot(w http.ResponseWriter, r *http.Request) {
 
 	//Getting Parameter
 	if err := Screenshot.GetScreenshotParam(a.DB); err != nil {
+		log.Println("SS")
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
 		return
 	}
