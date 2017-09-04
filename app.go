@@ -308,6 +308,7 @@ func (a *App) AddActivityScreenshot(w http.ResponseWriter, r *http.Request) {
 	//var transactions []model.Transaction
 	filedata, _, err := r.FormFile("img")
 	if err != nil {
+		log.Println("11")
 		return
 	}
 	var Session model.Session
