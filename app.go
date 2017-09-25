@@ -216,14 +216,11 @@ func (a *App) AddActivity(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer stmt.Close()
-	for _, transaction := range transactions {
 
-		//Convert Date
-		// transaction.StartDate = SyncDate(transaction.StartDate, Session.ClientDate, Session.ServerDate)
-		// transaction.EndDate = SyncDate(transaction.EndDate, Session.ClientDate, Session.ServerDate)
-		// if !checkValidityPeriod(transaction.StartDate, Session.StartTime, Session.EndTime) {
-		// 	continue
-		// }
+	for _, transaction := range transactions {
+		// To Do
+		//if overlapping pertama transaction enddate > FrontCheckSession -> update jadi FrontCheckSession date (sort by startdate)
+
 		fmt.Println(transaction.StartDate)
 		err := stmt.QueryRow(
 			Session.SessionID,
@@ -687,6 +684,10 @@ func (a *App) SaveDepartment(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := department.EditDepartment(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
+	}
+	if department.ResultCode != 1 {
+		respondWithError(w, http.StatusInternalServerError, department.ResultDescription, department.ResultCode)
 		return
 	}
 	if err := department.SaveDepartment(a.DB); err != nil {

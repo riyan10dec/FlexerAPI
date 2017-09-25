@@ -22,7 +22,7 @@ type Login struct {
 	ResultCode        int
 	ResultDescription string
 	PositionName      string
-	ClientTime        string
+	ClientTime        string  `json:"clientTime"`
 	GMTDiff           float32 `json:"gmtDiff"`
 }
 

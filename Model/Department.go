@@ -24,7 +24,7 @@ type Department struct {
 func (d *Department) SaveDepartment(db *sql.DB) error {
 	//rows, err := db.Query(query.SearchQuery("loginQuery"), l.UserLogin, l.Password)
 	return db.QueryRow(query.SearchQuery("cmsSaveDepartments"),
-		d.ClientID, d.DepartmentList, d.EntryBy).Scan(
+		d.ClientID, d.DepartmentsSeparator, d.EntryBy).Scan(
 		&d.ResultCode,
 		&d.ResultDescription)
 }
