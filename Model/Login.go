@@ -37,7 +37,8 @@ func (l *Login) DoLogin(db *sql.DB) error {
 		l.City,
 		l.Lat,
 		l.Long,
-		l.GMTDiff).Scan(&l.ResultCode, &l.ResultDescription, &l.Session.SessionID)
+		l.GMTDiff,
+		l.ClientTime).Scan(&l.ResultCode, &l.ResultDescription, &l.Session.SessionID)
 }
 
 //DoLoginCMS : CMS Login Func

@@ -9,7 +9,7 @@ var q = []Query{
 	Query{
 		key: "loginQuery",
 		query: `CALL sp_front_login(
-			?,?,?,?,?,?,?,?)`,
+			?,?,?,?,?,?,?,?,?)`,
 	}, Query{
 		key:   "getClientQuery",
 		query: "SELECT client_name FROM Master_Client where client_id = ? LIMIT 1",
@@ -18,7 +18,7 @@ var q = []Query{
 		query: "CALL sp_front_check_session (?)",
 	}, Query{
 		key:   "logoutQuery",
-		query: "CALL sp_front_logout (?)",
+		query: "CALL sp_front_logout (?,?)",
 	}, Query{
 		key:   "getUserID",
 		query: "SELECT user_id FROM Master_User where user_login = ? LIMIT 1",

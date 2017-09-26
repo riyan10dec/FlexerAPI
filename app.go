@@ -3,7 +3,6 @@ package main
 import (
 	model "FlexerAPI/Model"
 	query "FlexerAPI/Query"
-	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -14,9 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"golang.org/x/oauth2/google"
-	storage "google.golang.org/api/storage/v1"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/aws/aws-sdk-go/aws"
@@ -163,6 +159,7 @@ func (a *App) Logout(w http.ResponseWriter, r *http.Request) {
 	}
 	logout := model.Logout{
 		SessionID: Logout.SessionID,
+		ClientTime: Logout.ClientTime
 	}
 	if err := logout.DoLogout(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
@@ -991,31 +988,36 @@ func (a *App) UploadToS3(file multipart.File, filepath string) (string, int) {
 	return fmt.Sprintf("response %s", awsutil.StringValue(resp)), 1
 }
 
+// func (a *App) UploadToGoogleCloud(file multipart.File, filepath string) (string, string, int) {
+// 	scope := storage.DevstorageFullControlScope
+// 	client, err := google.DefaultClient(context.Background(), scope)
+// 	filepath = strings.Replace(filepath, "[ext]", "jpeg", -1)
+// 	if err != nil {
+// 		log.Fatalf("Unable to get default client: %v", err)
+// 	}
+// 	service, err := storage.New(client)
+// 	if err != nil {
+// 		log.Fatalf("Unable to create storage service: %v", err)
+// 	}
+// 	object := &storage.Object{
+// 		Name: a.Config.Gcs.ScreenshotFolder + filepath,
+// 	}
+// 	//file, err := os.Open(*fileName)
+// 	// if err != nil {
+// 	// 	fatalf(service, "Error opening %q: %v", *fileName, err)
+// 	// }
+// 	if res, err := service.Objects.Insert(a.Config.Gcs.Bucket, object).Media(file).Do(); err == nil {
+// 		fmt.Printf("Created object %v at location %v\n\n", res.Name, res.SelfLink)
+// 	} else {
+// 		return filepath, err.Error(), 0
+// 		//fatalf(service, "Objects.Insert failed: %v", err)
+// 	}
+// 	return filepath, "", 1
+// }
+
 func (a *App) UploadToGoogleCloud(file multipart.File, filepath string) (string, string, int) {
-	scope := storage.DevstorageFullControlScope
-	client, err := google.DefaultClient(context.Background(), scope)
-	filepath = strings.Replace(filepath, "[ext]", "jpeg", -1)
-	if err != nil {
-		log.Fatalf("Unable to get default client: %v", err)
-	}
-	service, err := storage.New(client)
-	if err != nil {
-		log.Fatalf("Unable to create storage service: %v", err)
-	}
-	object := &storage.Object{
-		Name: a.Config.Gcs.ScreenshotFolder + filepath,
-	}
-	//file, err := os.Open(*fileName)
-	// if err != nil {
-	// 	fatalf(service, "Error opening %q: %v", *fileName, err)
-	// }
-	if res, err := service.Objects.Insert(a.Config.Gcs.Bucket, object).Media(file).Do(); err == nil {
-		fmt.Printf("Created object %v at location %v\n\n", res.Name, res.SelfLink)
-	} else {
-		return filepath, err.Error(), 0
-		//fatalf(service, "Objects.Insert failed: %v", err)
-	}
-	return filepath, "", 1
+
+	return "", "", 1
 }
 func fieldSet(fields ...string) map[string]bool {
 	set := make(map[string]bool, len(fields))
