@@ -158,8 +158,8 @@ func (a *App) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	logout := model.Logout{
-		SessionID: Logout.SessionID,
-		ClientTime: Logout.ClientTime
+		SessionID:  Logout.SessionID,
+		ClientTime: Logout.ClientTime,
 	}
 	if err := logout.DoLogout(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
