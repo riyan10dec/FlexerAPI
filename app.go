@@ -368,7 +368,7 @@ func (a *App) CMSLogin(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
 		return
 	}
-	login := model.Login{Email: loginX.Email, Password: loginX.Password}
+	login := model.Login{Email: loginX.Email, Password: loginX.Password, GMTDiff: loginX.GMTDiff}
 	if err := login.DoLoginCMS(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
 		return

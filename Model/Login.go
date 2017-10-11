@@ -45,5 +45,5 @@ func (l *Login) DoLogin(db *sql.DB) error {
 func (l *Login) DoLoginCMS(db *sql.DB) error {
 	//rows, err := db.Query(query.SearchQuery("loginQuery"), l.UserLogin, l.Password)
 	return db.QueryRow(query.SearchQuery("loginCMSQuery"),
-		l.Email, l.Password).Scan(&l.ResultCode, &l.ResultDescription, &l.UserID, &l.PositionName, &l.SubscriptionID, &l.ClientID, &l.ServerTime)
+		l.Email, l.Password, l.GMTDiff).Scan(&l.ResultCode, &l.ResultDescription, &l.UserID, &l.PositionName, &l.SubscriptionID, &l.ClientID, &l.ServerTime)
 }
