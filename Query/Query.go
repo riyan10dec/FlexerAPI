@@ -134,7 +134,7 @@ var q = []Query{
 	},
 	Query{
 		key:   "loginCMSQuery",
-		query: `call sp_cms_login (?,?)`,
+		query: `call sp_cms_login (?,?,?)`,
 	},
 	Query{
 		key:   "cmsGetFeatures",
