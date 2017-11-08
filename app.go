@@ -375,7 +375,7 @@ func (a *App) CMSLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	token := GetToken(strconv.Itoa(int(login.Session.SessionID)))
-	result := map[string]interface{}{"token": token, "client_id": login.ClientID}
+	result := map[string]interface{}{"token": token, "client_id": login.ClientID, "status": login.ResultCode, "description": login.ResultDescription, "serverTime": login.ServerTime}
 	respondWithJSON(w, http.StatusOK, result)
 }
 
