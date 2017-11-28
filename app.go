@@ -47,6 +47,9 @@ func (a *App) Initialize() { //user, password, host, port, dbname, screenshotSto
 		a.Config.Database.DBName)
 	var err error
 	a.DB, err = sql.Open("mysql", connectionString)
+	a.DB.SetMaxOpenConns(100)
+	a.DB.SetMaxIdleConns(100)
+	a.DB.SetConnMaxLifetime(1 * time.Minute)
 	if err != nil {
 		log.Fatal(err)
 		fmt.Println(err.Error())
@@ -78,7 +81,7 @@ func (a *App) initializeRoutes() {
 	a.Router.HandleFunc("/cms/addEmployee1", a.AddEmployee).Methods("POST")
 	a.Router.Handle("/cms/addEmployee", jwtMiddleware.Handler(corsHandler(http.HandlerFunc(a.AddEmployee)))).Methods("POST")
 	a.Router.Handle("/cms/editEmployee", jwtMiddleware.Handler(http.HandlerFunc(a.EditEmployee))).Methods("POST")
-	a.Router.Handle("/cms/GetActiveSubs/{userID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetActiveSubs))).Methods("GET")
+	a.Router.Handle("/cms/GetActiveSubs/{userID}/{gmtDiff}/{activeOnly}", jwtMiddleware.Handler(http.HandlerFunc(a.GetActiveSubs))).Methods("GET")
 	a.Router.Handle("/cms/CheckSubscription/{clientID}", jwtMiddleware.Handler(http.HandlerFunc(a.CheckSubscription))).Methods("GET")
 	a.Router.Handle("/cms/EmployeeTree/first/{clientID}/{activeOnly}", jwtMiddleware.Handler(http.HandlerFunc(a.EmployeeTreeGetFirstLevel))).Methods("GET")
 	a.Router.Handle("/cms/EmployeeTree/child/{userID}/{activeOnly}", jwtMiddleware.Handler(http.HandlerFunc(a.EmployeeTreeGetChild))).Methods("GET")
@@ -89,9 +92,10 @@ func (a *App) initializeRoutes() {
 	a.Router.Handle("/cms/GetActiveDepartments/{clientID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetActiveDepartment))).Methods("GET")
 	a.Router.Handle("/cms/ChangePassword", jwtMiddleware.Handler(http.HandlerFunc(a.ChangePassword))).Methods("POST")
 	a.Router.Handle("/cms/GetFeatures/{userID}/{positionName}/{subscriptionID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetAllFeatures))).Methods("GET")
-	a.Router.Handle("/cms/GetSubs/{userID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetSubs))).Methods("GET")
+	a.Router.Handle("/cms/GetSubs/{userID}/{gmtDiff}/{activeOnly}", jwtMiddleware.Handler(http.HandlerFunc(a.GetSubs))).Methods("GET")
 	a.Router.Handle("/cms/GetAllActivities/{userID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetAllActivities))).Methods("GET")
 	a.Router.Handle("/cms/SaveDepartment", jwtMiddleware.Handler(http.HandlerFunc(a.SaveDepartment))).Methods("POST")
+	a.Router.Handle("/cms/GetAllPositions/{clientID}", jwtMiddleware.Handler(corsHandler(http.HandlerFunc(a.GetAllPositions)))).Methods("GET")
 	//a.Router.Handle("/cms/EditDepartment", jwtMiddleware.Handler(http.HandlerFunc(a.EditDepartment))).Methods("POST")
 }
 
@@ -375,7 +379,7 @@ func (a *App) CMSLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	token := GetToken(strconv.Itoa(int(login.Session.SessionID)))
-	result := map[string]interface{}{"token": token, "client_id": login.ClientID, "status": login.ResultCode, "description": login.ResultDescription, "serverTime": login.ServerTime}
+	result := map[string]interface{}{"token": token, "clientID": login.ClientID, "status": login.ResultCode, "description": login.ResultDescription, "serverTime": login.ServerTime, "userID": login.UserID, "userName": login.Username}
 	respondWithJSON(w, http.StatusOK, result)
 }
 
@@ -452,8 +456,26 @@ func (a *App) GetActiveSubs(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	var err error
 	User.UserID, err = strconv.Atoi(vars["userID"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+	value, err := strconv.ParseFloat(vars["gmtDiff"], 32)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+	User.GMTDiff = float32(value)
+
+	User.ActiveOnly, err = strconv.ParseBool(vars["activeOnly"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
 	user := model.User{
-		UserID: User.UserID,
+		UserID:     User.UserID,
+		GMTDiff:    User.GMTDiff,
+		ActiveOnly: User.ActiveOnly,
 	}
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
@@ -472,7 +494,7 @@ func (a *App) GetActiveSubs(w http.ResponseWriter, r *http.Request) {
 			"userName":       u.UserName,
 			"positionName":   u.PositionName,
 			"departmentName": u.DepartmentName,
-			"IPAddress":      u.IPAddress,
+			"IPAddress":      u.IPAddress.String,
 			"loginDate":      u.LoginDate,
 		})
 	}
@@ -635,12 +657,19 @@ func (a *App) GetAllEmployees(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	var err error
 	User.UserID, err = strconv.Atoi(vars["userID"])
-	user := model.User{
-		UserID: User.UserID,
-	}
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
 		return
+	}
+	value, err := strconv.ParseFloat(vars["gmtDiff"], 32)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+	User.GMTDiff = float32(value)
+	user := model.User{
+		UserID:  User.UserID,
+		GMTDiff: User.GMTDiff,
 	}
 
 	if err := user.GetEmployees(a.DB); err != nil {
@@ -756,6 +785,32 @@ func (a *App) GetAllDepartment(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, result)
 }
 
+func (a *App) GetAllPositions(w http.ResponseWriter, r *http.Request) {
+	var Position model.Position
+	vars := mux.Vars(r)
+	var err error
+	Position.ClientID, err = strconv.Atoi(vars["clientID"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+	position := model.Position{
+		ClientID: Position.ClientID,
+	}
+	var ps []model.Position
+	if err, ps = position.GetAllPositions(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
+	}
+
+	var res []string
+	for _, p := range ps {
+		res = append(res, p.PositionName)
+	}
+	result := map[string]interface{}{"status": 1, "positions": res}
+	respondWithJSON(w, http.StatusOK, result)
+}
+
 func (a *App) GetAllFeatures(w http.ResponseWriter, r *http.Request) {
 	//vars := mux.Vars(r)
 	var User model.User
@@ -796,15 +851,29 @@ func (a *App) GetSubs(w http.ResponseWriter, r *http.Request) {
 	var User model.User
 	vars := mux.Vars(r)
 	var err error
+
 	User.UserID, err = strconv.Atoi(vars["userID"])
-	user := model.User{
-		UserID: User.UserID,
-	}
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
 		return
 	}
+	value, err := strconv.ParseFloat(vars["gmtDiff"], 32)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+	User.GMTDiff = float32(value)
 
+	User.ActiveOnly, err = strconv.ParseBool(vars["activeOnly"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+	user := model.User{
+		UserID:     User.UserID,
+		GMTDiff:    User.GMTDiff,
+		ActiveOnly: User.ActiveOnly,
+	}
 	if err := user.GetSubs(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
 		return
@@ -819,6 +888,12 @@ func (a *App) GetSubs(w http.ResponseWriter, r *http.Request) {
 			"departmentName": u.DepartmentName,
 			"activeStatus":   u.ActiveStatus,
 			"lastActivity":   u.LastActivity.String,
+			"IPAddress":      u.IPAddress.String,
+			"superiorID":     u.SuperiorID,
+			"superiorName":   u.SuperiorName,
+			"email":          u.Email,
+			"activeStart":    u.ActiveStart,
+			"activeEnd":      u.ActiveEnd,
 		})
 	}
 	result := map[string]interface{}{"employees": res}

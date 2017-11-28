@@ -1,8 +1,8 @@
 {
     "database" : {
-        "host" : "35.189.180.151",
+        "host" : "flexerapi.southeastasia.cloudapp.azure.com",
         "user" : "root",
-        "password" : "Password95",
+        "password" : "P@ssw0rd",
         "port": "3306",
         "dbName":"M"
     },

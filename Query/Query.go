@@ -56,7 +56,7 @@ var q = []Query{
 		query: `call sp_cms_check_subscription(?)`,
 	}, Query{
 		key:   "cmsGetActiveSubs",
-		query: `call sp_cms_get_active_subs(?)`,
+		query: `call sp_cms_get_active_subs(?,?,?)`,
 	},
 	Query{
 		key: "cmsEmployeeTreeFirstLevelAll",
@@ -101,7 +101,7 @@ var q = []Query{
 	},
 	Query{
 		key:   "cmsEmployeeGrid",
-		query: `call sp_cms_get_all_employees (?)`,
+		query: `call sp_cms_get_all_employees (?,?)`,
 	},
 	Query{
 		key: "cmsEmailValidation",
@@ -142,11 +142,15 @@ var q = []Query{
 	},
 	Query{
 		key:   "cmsGetSubs",
-		query: `call sp_cms_get_subs (?)`,
+		query: `call sp_cms_get_subs (?, ?, ?)`,
 	},
 	Query{
 		key:   "cmsGetFeatures",
 		query: `call cmsGetActivities (?)`,
+	},
+	Query{
+		key:   "cmsGetAllPositions",
+		query: `call sp_cms_get_all_positions (?)`,
 	},
 }
 

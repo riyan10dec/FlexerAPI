@@ -10,6 +10,7 @@ type User struct {
 	EmployeeID        string `json:"employeeID"`
 	ClientID          int    `json:"clientID"`
 	SuperiorID        int    `json:"superiorID"`
+	SuperiorName      string `json:"superiorName"`
 	UserName          string `json:"userName"`
 	UserLogin         string `json:"userLogin"`
 	UserPassword      string
@@ -25,7 +26,7 @@ type User struct {
 	ModifiedBy        int            `json:"modifiedBy"`
 	PositionName      string         `json:"positionName"`
 	DepartmentName    string         `json:"departmentName"`
-	IPAddress         string         `json:"ipAddress"`
+	IPAddress         sql.NullString `json:"ipAddress"`
 	LoginDate         string         `json:"loginDate"`
 	SubsCount         int            `json:"subsCount"`
 	LastActivity      sql.NullString `json:"lastActivity"`
@@ -33,7 +34,8 @@ type User struct {
 	ActiveOnly        bool `json:"activeOnly"`
 	Features          []Feature
 	Activities        []Activity
-	SubscriptionID    int `json:"subscriptionID"`
+	SubscriptionID    int     `json:"subscriptionID"`
+	GMTDiff           float32 `json:"gmtDiff"`
 }
 
 //DoLogin : Login Func
@@ -251,7 +253,7 @@ func (u *User) GetFeatures(db *sql.DB) error {
 
 func (u *User) GetSubs(db *sql.DB) error {
 	rows, err := db.Query(query.SearchQuery("cmsGetSubs"),
-		u.UserID,
+		u.UserID, u.GMTDiff, u.ActiveOnly,
 	)
 	if err != nil {
 		return err
@@ -264,7 +266,13 @@ func (u *User) GetSubs(db *sql.DB) error {
 			&u2.PositionName,
 			&u2.DepartmentName,
 			&u2.ActiveStatus,
-			&u2.LastActivity)
+			&u2.LastActivity,
+			&u2.IPAddress,
+			&u2.SuperiorID,
+			&u2.SuperiorName,
+			&u2.Email,
+			&u2.ActiveStart,
+			&u2.ActiveEnd)
 		if err != nil {
 			return err
 		}
