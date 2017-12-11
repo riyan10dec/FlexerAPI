@@ -42,6 +42,7 @@ func (s *Session) GetTasks(db *sql.DB) error {
 	//rows, err := db.Query(query.SearchQuery("loginQuery"), l.UserLogin, l.Password)
 	rows, err := db.Query(query.SearchQuery("getTask"),
 		s.SessionID)
+	defer rows.Close()
 	if err != nil {
 		return err
 	}

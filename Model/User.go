@@ -57,9 +57,8 @@ func (u *User) AddEmployee(db *sql.DB) error {
 		u.SuperiorID,
 		u.Email,
 		u.UserPassword,
-		u.ActiveStart,
-		u.ActiveEnd,
 		u.EntryUser,
+		u.GMTDiff,
 	).Scan(&u.ResultCode, &u.ResultDescription)
 }
 
@@ -75,15 +74,17 @@ func (u *User) EditEmployee(db *sql.DB) error {
 		u.SuperiorID,
 		u.Email,
 		u.UserPassword,
-		u.ActiveStart,
+		u.ActiveStatus,
 		u.ActiveEnd,
 		u.ModifiedBy,
+		u.GMTDiff,
 	).Scan(&u.ResultCode, &u.ResultDescription)
 }
 
 func (u *User) GetActiveSubs(db *sql.DB) error {
 	rows, err := db.Query(query.SearchQuery("cmsGetActiveSubs"),
 		u.UserID)
+	defer rows.Close()
 	//log.Fatal(u.UserID)
 	if err != nil {
 		return err
@@ -115,6 +116,7 @@ func (u *User) EmployeeTreeFirstLevel(db *sql.DB) error {
 	rows, err := db.Query(q,
 		u.ClientID, u.ClientID,
 	)
+	defer rows.Close()
 	if err != nil {
 		return err
 	}
@@ -144,6 +146,7 @@ func (u *User) EmployeeTreeSubs(db *sql.DB) error {
 	rows, err := db.Query(q,
 		u.UserID,
 	)
+	defer rows.Close()
 	if err != nil {
 		return err
 	}
@@ -191,6 +194,7 @@ func (u *User) GetEmployees(db *sql.DB) error {
 	rows, err := db.Query(query.SearchQuery("cmsEmployeeGrid"),
 		u.UserID,
 	)
+	defer rows.Close()
 	if err != nil {
 		return err
 	}
@@ -233,6 +237,7 @@ func (u *User) GetFeatures(db *sql.DB) error {
 	rows, err := db.Query(query.SearchQuery("cmsGetFeatures"),
 		u.UserID, u.PositionName, u.SubscriptionID,
 	)
+	defer rows.Close()
 	if err != nil {
 		return err
 	}
@@ -255,6 +260,7 @@ func (u *User) GetSubs(db *sql.DB) error {
 	rows, err := db.Query(query.SearchQuery("cmsGetSubs"),
 		u.UserID, u.GMTDiff, u.ActiveOnly,
 	)
+	defer rows.Close()
 	if err != nil {
 		return err
 	}
@@ -289,6 +295,7 @@ func (u *User) GetAllActivities(db *sql.DB) error {
 	rows, err := db.Query(query.SearchQuery("cmsGetActivities"),
 		u.UserID,
 	)
+	defer rows.Close()
 	if err != nil {
 		return err
 	}

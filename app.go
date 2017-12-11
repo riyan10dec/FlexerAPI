@@ -400,9 +400,8 @@ func (a *App) AddEmployee(w http.ResponseWriter, r *http.Request) {
 		SuperiorID:     User.SuperiorID,
 		Email:          User.Email,
 		UserPassword:   User.UserPassword,
-		ActiveStart:    User.ActiveStart,
-		ActiveEnd:      User.ActiveEnd,
-		EntryUser:      User.EntryUser,
+		EntryUser:      User.ModifiedBy,
+		GMTDiff:        User.GMTDiff,
 	}
 
 	if err := user.AddEmployee(a.DB); err != nil {
@@ -434,9 +433,10 @@ func (a *App) EditEmployee(w http.ResponseWriter, r *http.Request) {
 		SuperiorID:     User.SuperiorID,
 		Email:          User.Email,
 		UserPassword:   User.UserPassword,
-		ActiveStart:    User.ActiveStart,
+		ActiveStatus:   User.ActiveStatus,
 		ActiveEnd:      User.ActiveEnd,
 		ModifiedBy:     User.ModifiedBy,
+		GMTDiff:        User.GMTDiff,
 	}
 
 	if err := user.EditEmployee(a.DB); err != nil {

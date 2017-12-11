@@ -45,6 +45,7 @@ func (d *Department) EditDepartment(db *sql.DB) error {
 func (d *Department) GetAllDepartments(db *sql.DB) (error, []Department) {
 	rows, err := db.Query(query.SearchQuery("cmsGetAllDepartments"),
 		d.ClientID, d.GMTDiff)
+	defer rows.Close()
 	if err != nil {
 		return err, nil
 	}
@@ -68,11 +69,13 @@ func (d *Department) GetAllDepartments(db *sql.DB) (error, []Department) {
 func (d *Department) GetActiveDepartments(db *sql.DB) (error, []Department) {
 	rows, err := db.Query(query.SearchQuery("cmsGetActiveDepartments"),
 		d.ClientID)
+	defer rows.Close()
 	if err != nil {
 		return err, nil
 	}
 	var ds []Department
 
+	defer rows.Close()
 	for rows.Next() {
 		var d Department
 		err := rows.Scan(&d.DepartmentName)
