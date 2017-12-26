@@ -152,6 +152,26 @@ var q = []Query{
 		key:   "cmsGetAllPositions",
 		query: `call sp_cms_get_all_positions (?)`,
 	},
+	Query{
+		key:   "cmsGetUserPerformance",
+		query: `call sp_cms_get_user_performance (?,?,?)`,
+	},
+	Query{
+		key:   "cmsGetUserDaily",
+		query: `call sp_cms_get_user_daily (?,?,?,?)`,
+	},
+	Query{
+		key:   "cmsGetUserDailyActivity",
+		query: `call sp_cms_get_user_daily_activity (?,?,?)`,
+	},
+	Query{
+		key:   "cmsGetUserDailyTimeline",
+		query: `call sp_cms_get_user_daily_timeline (?,?)`,
+	},
+	Query{
+		key:   "getUserTask",
+		query: `call sp_cms_get_user_tasks (?,?,?,?)`,
+	},
 }
 
 func SearchQuery(key string) string {

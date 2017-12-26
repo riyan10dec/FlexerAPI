@@ -75,7 +75,7 @@ func (a *App) initializeRoutes() {
 	a.Router.Handle("/addActivity", jwtMiddleware.Handler(http.HandlerFunc(a.AddActivity))).Methods("POST")
 	a.Router.Handle("/addActivity/screenshot", jwtMiddleware.Handler(http.HandlerFunc(a.AddActivityScreenshot))).Methods("POST")
 	a.Router.Handle("/getTask/{sessionID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetTask))).Methods("GET")
-	a.Router.Handle("/addTask/{sessionID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetTask))).Methods("POST")
+	a.Router.Handle("/addTask/{sessionID}", jwtMiddleware.Handler(http.HandlerFunc(a.AddTask))).Methods("POST")
 
 	a.Router.HandleFunc("/cms/login", a.CMSLogin).Methods("POST")
 	a.Router.HandleFunc("/cms/addEmployee1", a.AddEmployee).Methods("POST")
@@ -96,6 +96,11 @@ func (a *App) initializeRoutes() {
 	a.Router.Handle("/cms/GetAllActivities/{userID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetAllActivities))).Methods("GET")
 	a.Router.Handle("/cms/SaveDepartment", jwtMiddleware.Handler(http.HandlerFunc(a.SaveDepartment))).Methods("POST")
 	a.Router.Handle("/cms/GetAllPositions/{clientID}", jwtMiddleware.Handler(corsHandler(http.HandlerFunc(a.GetAllPositions)))).Methods("GET")
+	a.Router.Handle("/cms/GetUserPerformance/{userID}/{periodStart}/{periodEnd}", jwtMiddleware.Handler(corsHandler(http.HandlerFunc(a.GetUserPerformance)))).Methods("GET")
+	a.Router.Handle("/cms/GetUserDaily/{userID}/{periodStart}/{periodEnd}/{numOfResult}", jwtMiddleware.Handler(corsHandler(http.HandlerFunc(a.GetUserDaily)))).Methods("GET")
+	a.Router.Handle("/cms/GetUserDailyActivity/{userID}/{periodStart}/{periodEnd}", jwtMiddleware.Handler(corsHandler(http.HandlerFunc(a.GetUserDailyActivity)))).Methods("GET")
+	a.Router.Handle("/cms/GetUserDailyTimeline/{userID}/{sessionDate}", jwtMiddleware.Handler(corsHandler(http.HandlerFunc(a.GetUserDailyTimeline)))).Methods("GET")
+	a.Router.Handle("/cms/GetUserTasks/{UserID}/{PeriodStart}/{PeriodEnd}/{IsOnGoingBy}", jwtMiddleware.Handler(http.HandlerFunc(a.GetUserTasks))).Methods("GET")
 	//a.Router.Handle("/cms/EditDepartment", jwtMiddleware.Handler(http.HandlerFunc(a.EditDepartment))).Methods("POST")
 }
 
@@ -958,6 +963,265 @@ func (a *App) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, user.ResultDescription, user.ResultCode)
 		return
 	}
+}
+
+//Performance
+
+func (a *App) GetUserPerformance(w http.ResponseWriter, r *http.Request) {
+	//vars := mux.Vars(r)
+	var Performance model.Performance
+	vars := mux.Vars(r)
+	var err error
+	Performance.UserID, err = strconv.Atoi(vars["userID"])
+	if vars["periodStart"] == "0" {
+		Performance.PeriodStart.String = ""
+		Performance.PeriodStart.Valid = false
+	} else {
+		Performance.PeriodStart.String = vars["periodStart"]
+		Performance.PeriodStart.Valid = true
+	}
+	if vars["periodEnd"] == "0" {
+		Performance.PeriodEnd.String = ""
+		Performance.PeriodEnd.Valid = false
+	} else {
+		Performance.PeriodEnd.String = vars["periodEnd"]
+		Performance.PeriodEnd.Valid = true
+	}
+	performance := model.Performance{
+		UserID:      Performance.UserID,
+		PeriodStart: Performance.PeriodStart,
+		PeriodEnd:   Performance.PeriodEnd,
+	}
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+
+	if err := performance.GetUserPerformance(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
+	}
+	result := map[string]interface{}{
+		"userID":                    performance.UserID,
+		"employeeID":                performance.EmployeeID,
+		"userName":                  performance.UserName,
+		"positionName":              performance.PositionName,
+		"departmentName":            performance.DepartmentName,
+		"workDays":                  performance.WorkDays,
+		"sessionDuration":           performance.SessionDuration,
+		"sessionDurationDaily":      performance.SessionDurationDaily,
+		"activityDuration":          performance.ActivityDuration,
+		"activityDurationDaily":     performance.ActivityDurationDaily,
+		"productiveDuration":        performance.ProductiveDuration,
+		"productiveDurationDaily":   performance.ProductiveDurationDaily,
+		"unproductiveDuration":      performance.UnproductiveDuration,
+		"unproductiveDurationDaily": performance.UnproductiveDurationDaily,
+		"unclassifiedDuration":      performance.UnclassifiedDuration,
+		"unclassifiedDurationDaily": performance.UnclassifiedDurationDaily,
+		"keystroke":                 performance.Keystroke,
+		"keystrokePerHour":          performance.KeystrokePerHour,
+		"mouseClick":                performance.MouseClick,
+		"mouseClickPerHour":         performance.MouseClickPerHour,
+		"maxKeystrokePerHour":       performance.MaxKeystrokePerHour,
+		"maxMouseClickPerHour":      performance.MaxMouseClickPerHour,
+	}
+	respondWithJSON(w, http.StatusOK, result)
+}
+
+func (a *App) GetUserTasks(w http.ResponseWriter, r *http.Request) {
+	//vars := mux.Vars(r)
+	var task model.Task
+	vars := mux.Vars(r)
+	var err error
+	task.UserID, err = strconv.ParseInt(vars["UserID"], 10, 64)
+	if vars["PeriodStart"] == "0" {
+		task.PeriodStart.String = ""
+		task.PeriodStart.Valid = false
+	} else {
+		task.PeriodStart.String = vars["periodStart"]
+		task.PeriodStart.Valid = true
+	}
+	if vars["PeriodEnd"] == "0" {
+		task.PeriodEnd.String = ""
+		task.PeriodEnd.Valid = false
+	} else {
+		task.PeriodEnd.String = vars["periodEnd"]
+		task.PeriodEnd.Valid = true
+	}
+	task.IsInProgress, err = strconv.ParseBool(vars["IsOnGoingBy"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+	if err := task.GetUserTasks(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
+	}
+
+	var res []map[string]interface{}
+	for _, t := range task.Tasks {
+		res = append(res, map[string]interface{}{
+			"taskID":         t.TaskID,
+			"taskName":       t.TaskName,
+			"taskComplexity": t.TaskComplexity,
+			"isDaily":        t.IsDaily,
+			"taskSource":     t.TaskSource,
+			"assignmentDate": t.AssignmentDate,
+			"targetDate":     t.TargetDate,
+			"taskPriority":   t.TaskPriority,
+			"taskStatus":     t.TaskStatus,
+			"completedDate":  t.CompletedDate,
+		})
+	}
+
+	result := map[string]interface{}{"tasks": res}
+	respondWithJSON(w, http.StatusOK, result)
+}
+func (a *App) GetUserDaily(w http.ResponseWriter, r *http.Request) {
+	//vars := mux.Vars(r)
+	var Performance model.Performance
+	vars := mux.Vars(r)
+	var err error
+	Performance.UserID, err = strconv.Atoi(vars["userID"])
+	Performance.NumOfResult, err = strconv.Atoi(vars["numOfResult"])
+	if vars["periodStart"] == "0" {
+		Performance.PeriodStart.String = ""
+		Performance.PeriodStart.Valid = false
+	} else {
+		Performance.PeriodStart.String = vars["periodStart"]
+		Performance.PeriodStart.Valid = true
+	}
+	if vars["periodEnd"] == "0" {
+		Performance.PeriodEnd.String = ""
+		Performance.PeriodEnd.Valid = false
+	} else {
+		Performance.PeriodEnd.String = vars["periodEnd"]
+		Performance.PeriodEnd.Valid = true
+	}
+	performance := model.Performance{
+		UserID:      Performance.UserID,
+		PeriodStart: Performance.PeriodStart,
+		PeriodEnd:   Performance.PeriodEnd,
+		NumOfResult: Performance.NumOfResult,
+	}
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+
+	if err := performance.GetUserDaily(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
+	}
+	var res []map[string]interface{}
+	for _, p := range performance.Performances {
+		res = append(res, map[string]interface{}{
+			"userID":               p.UserID,
+			"employeeID":           p.EmployeeID,
+			"userName":             p.UserName,
+			"positionName":         p.PositionName,
+			"departmentName":       p.DepartmentName,
+			"sessionDate":          p.SessionDate,
+			"firstLoginDate":       p.FirstLoginDate,
+			"sessionDuration":      p.SessionDuration,
+			"activityDuration":     p.ActivityDuration,
+			"productiveDuration":   p.ProductiveDuration,
+			"unproductiveDuration": p.UnproductiveDuration,
+			"unclassifiedDuration": p.UnclassifiedDuration,
+		})
+	}
+	result := map[string]interface{}{"performances": res}
+	respondWithJSON(w, http.StatusOK, result)
+}
+func (a *App) GetUserDailyActivity(w http.ResponseWriter, r *http.Request) {
+	//vars := mux.Vars(r)
+	var Performance model.Performance
+	vars := mux.Vars(r)
+	var err error
+	Performance.UserID, err = strconv.Atoi(vars["userID"])
+	if vars["periodStart"] == "0" {
+		Performance.PeriodStart.String = ""
+		Performance.PeriodStart.Valid = false
+	} else {
+		Performance.PeriodStart.String = vars["periodStart"]
+		Performance.PeriodStart.Valid = true
+	}
+	if vars["periodEnd"] == "0" {
+		Performance.PeriodEnd.String = ""
+		Performance.PeriodEnd.Valid = false
+	} else {
+		Performance.PeriodEnd.String = vars["periodEnd"]
+		Performance.PeriodEnd.Valid = true
+	}
+	performance := model.Performance{
+		UserID:      Performance.UserID,
+		PeriodStart: Performance.PeriodStart,
+		PeriodEnd:   Performance.PeriodEnd,
+	}
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+
+	if err := performance.GetUserDailyActivity(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
+	}
+	var res []map[string]interface{}
+	var totalDuration float32 = 0
+	for _, p := range performance.Performances {
+		res = append(res, map[string]interface{}{
+			"sessionDate":            p.SessionDate,
+			"activityName":           p.ActivityName,
+			"activityType":           p.ActivityType,
+			"activityCategory":       p.ActivityCategory,
+			"activityClassification": p.ActivityClassification,
+			"keystroke":              p.Keystroke,
+			"mouseclick":             p.MouseClick,
+			"activityDuration":       p.ActivityDuration,
+		})
+		if p.ActivityDuration > totalDuration {
+			totalDuration = p.ActivityDuration
+		}
+	}
+	result := map[string]interface{}{"performances": res, "totalDuration": totalDuration}
+	respondWithJSON(w, http.StatusOK, result)
+}
+func (a *App) GetUserDailyTimeline(w http.ResponseWriter, r *http.Request) {
+	//vars := mux.Vars(r)
+	var Performance model.Performance
+	vars := mux.Vars(r)
+	var err error
+	Performance.UserID, err = strconv.Atoi(vars["userID"])
+	Performance.SessionDate = vars["sessionDate"]
+	performance := model.Performance{
+		UserID:      Performance.UserID,
+		SessionDate: Performance.SessionDate,
+	}
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+
+	if err := performance.GetUserDailyTimeline(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
+	}
+	var res []map[string]interface{}
+	for _, p := range performance.Performances {
+		res = append(res, map[string]interface{}{
+			"activityHour":         p.ActivityHour,
+			"activityHour2":        p.ActivityHour2,
+			"AMPM":                 p.AMPM,
+			"activityHourLabel":    p.ActivityHourLabel,
+			"productiveDuration":   p.ProductiveDuration,
+			"unproductiveDuration": p.UnproductiveDuration,
+			"unclassifiedDuration": p.UnclassifiedDuration,
+			"activityCategory":     p.ActivityCategory,
+		})
+	}
+	result := map[string]interface{}{"performances": res}
+	respondWithJSON(w, http.StatusOK, result)
 }
 
 //TOKEN
