@@ -83,8 +83,8 @@ func (a *App) initializeRoutes() {
 	a.Router.Handle("/cms/editEmployee", jwtMiddleware.Handler(http.HandlerFunc(a.EditEmployee))).Methods("POST")
 	a.Router.Handle("/cms/GetActiveSubs/{userID}/{gmtDiff}/{activeOnly}", jwtMiddleware.Handler(http.HandlerFunc(a.GetActiveSubs))).Methods("GET")
 	a.Router.Handle("/cms/CheckSubscription/{clientID}", jwtMiddleware.Handler(http.HandlerFunc(a.CheckSubscription))).Methods("GET")
-	a.Router.Handle("/cms/EmployeeTree/first/{clientID}/{activeOnly}", jwtMiddleware.Handler(http.HandlerFunc(a.EmployeeTreeGetFirstLevel))).Methods("GET")
-	a.Router.Handle("/cms/EmployeeTree/child/{userID}/{activeOnly}", jwtMiddleware.Handler(http.HandlerFunc(a.EmployeeTreeGetChild))).Methods("GET")
+	a.Router.Handle("/cms/EmployeeTree/first/{userID}/{activeOnly}/{gmtDiff}", jwtMiddleware.Handler(http.HandlerFunc(a.EmployeeTreeGetFirstLevel))).Methods("GET")
+	a.Router.Handle("/cms/EmployeeTree/child/{userID}/{activeOnly}/{gmtDiff}", jwtMiddleware.Handler(http.HandlerFunc(a.EmployeeTreeGetChild))).Methods("GET")
 	a.Router.Handle("/cms/EmployeeTree/ChangeSuperior", jwtMiddleware.Handler(http.HandlerFunc(a.EmployeeTreeChangeSuperior))).Methods("POST")
 	a.Router.Handle("/cms/EmailValidation", jwtMiddleware.Handler(http.HandlerFunc(a.EmailValidation))).Methods("POST")
 	a.Router.Handle("/cms/GetAllEmployees/{userID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetAllEmployees))).Methods("GET")
@@ -93,7 +93,8 @@ func (a *App) initializeRoutes() {
 	a.Router.Handle("/cms/ChangePassword", jwtMiddleware.Handler(http.HandlerFunc(a.ChangePassword))).Methods("POST")
 	a.Router.Handle("/cms/GetFeatures/{userID}/{positionName}/{subscriptionID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetAllFeatures))).Methods("GET")
 	a.Router.Handle("/cms/GetSubs/{userID}/{gmtDiff}/{activeOnly}", jwtMiddleware.Handler(http.HandlerFunc(a.GetSubs))).Methods("GET")
-	a.Router.Handle("/cms/GetAllActivities/{userID}", jwtMiddleware.Handler(http.HandlerFunc(a.GetAllActivities))).Methods("GET")
+	a.Router.Handle("/cms/GetAllActivities/{userID}/{gmtDiff}", jwtMiddleware.Handler(http.HandlerFunc(a.GetAllActivities))).Methods("GET")
+	a.Router.Handle("/cms/SaveActivity", jwtMiddleware.Handler(http.HandlerFunc(a.SaveActivity))).Methods("POST")
 	a.Router.Handle("/cms/SaveDepartment", jwtMiddleware.Handler(http.HandlerFunc(a.SaveDepartment))).Methods("POST")
 	a.Router.Handle("/cms/GetAllPositions/{clientID}", jwtMiddleware.Handler(corsHandler(http.HandlerFunc(a.GetAllPositions)))).Methods("GET")
 	a.Router.Handle("/cms/GetUserPerformance/{userID}/{periodStart}/{periodEnd}", jwtMiddleware.Handler(corsHandler(http.HandlerFunc(a.GetUserPerformance)))).Methods("GET")
@@ -542,10 +543,18 @@ func (a *App) EmployeeTreeGetFirstLevel(w http.ResponseWriter, r *http.Request) 
 	var User model.User
 	vars := mux.Vars(r)
 	var err error
-	User.ClientID, err = strconv.Atoi(vars["clientID"])
+	User.UserID, err = strconv.Atoi(vars["userID"])
 	User.ActiveOnly, err = strconv.ParseBool(vars["activeOnly"])
+	value, err := strconv.ParseFloat(vars["gmtDiff"], 32)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+	User.GMTDiff = float32(value)
 	user := model.User{
-		ClientID: User.ClientID,
+		UserID:     User.UserID,
+		ActiveOnly: User.ActiveOnly,
+		GMTDiff:    User.GMTDiff,
 	}
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
@@ -576,8 +585,16 @@ func (a *App) EmployeeTreeGetChild(w http.ResponseWriter, r *http.Request) {
 	var err error
 	User.UserID, err = strconv.Atoi(vars["userID"])
 	User.ActiveOnly, err = strconv.ParseBool(vars["activeOnly"])
+	value, err := strconv.ParseFloat(vars["gmtDiff"], 32)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+	User.GMTDiff = float32(value)
 	user := model.User{
-		UserID: User.UserID,
+		UserID:     User.UserID,
+		ActiveOnly: User.ActiveOnly,
+		GMTDiff:    User.GMTDiff,
 	}
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
@@ -907,24 +924,31 @@ func (a *App) GetSubs(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) GetAllActivities(w http.ResponseWriter, r *http.Request) {
 	//vars := mux.Vars(r)
-	var User model.User
+	var Activity model.Activity
 	vars := mux.Vars(r)
 	var err error
-	User.UserID, err = strconv.Atoi(vars["userID"])
-	user := model.User{
-		UserID: User.UserID,
+	Activity.UserID, err = strconv.Atoi(vars["userID"])
+	activity := model.Activity{
+		UserID: Activity.UserID,
 	}
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
 		return
 	}
 
-	if err := user.GetAllActivities(a.DB); err != nil {
+	value, err := strconv.ParseFloat(vars["gmtDiff"], 32)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+	Activity.GMTDiff = float32(value)
+
+	if err := activity.GetAllActivities(a.DB); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
 		return
 	}
 	var res []map[string]interface{}
-	for _, a := range user.Activities {
+	for _, a := range activity.Activities {
 		res = append(res, map[string]interface{}{
 			"activityName":   a.ActivityName,
 			"activityType":   a.ActivityType,
@@ -934,6 +958,26 @@ func (a *App) GetAllActivities(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	result := map[string]interface{}{"activities": res}
+	respondWithJSON(w, http.StatusOK, result)
+}
+
+func (a *App) SaveActivity(w http.ResponseWriter, r *http.Request) {
+	var Activity model.Activity
+	decoder := json.NewDecoder(r.Body)
+	defer r.Body.Close()
+	if err := decoder.Decode(&Activity); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+	if err := Activity.SaveActivity(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
+	}
+	if Activity.ResultCode != 1 {
+		respondWithError(w, http.StatusInternalServerError, Activity.ResultDescription, Activity.ResultCode)
+		return
+	}
+	result := map[string]interface{}{"status": 1}
 	respondWithJSON(w, http.StatusOK, result)
 }
 

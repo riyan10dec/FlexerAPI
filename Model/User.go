@@ -34,6 +34,7 @@ type User struct {
 	ActiveOnly        bool `json:"activeOnly"`
 	Features          []Feature
 	Activities        []Activity
+	ActivityName      string  `json:"activityName"`
 	SubscriptionID    int     `json:"subscriptionID"`
 	GMTDiff           float32 `json:"gmtDiff"`
 }
@@ -105,16 +106,8 @@ func (u *User) GetActiveSubs(db *sql.DB) error {
 }
 
 func (u *User) EmployeeTreeFirstLevel(db *sql.DB) error {
-	//rows, err := db.Query(query.SearchQuery("loginQuery"), l.UserLogin, l.Password)
-	var q string
-	if u.ActiveOnly == true {
-		q = query.SearchQuery("cmsEmployeeTreeFirstLevelActive")
-	} else {
-		q = query.SearchQuery("cmsEmployeeTreeFirstLevelAll")
-	}
-
-	rows, err := db.Query(q,
-		u.ClientID, u.ClientID,
+	rows, err := db.Query(query.SearchQuery("cmsEmployeeTreeFirstLevel"),
+		u.UserID, u.ActiveOnly, u.GMTDiff,
 	)
 	defer rows.Close()
 	if err != nil {
@@ -136,15 +129,8 @@ func (u *User) EmployeeTreeFirstLevel(db *sql.DB) error {
 }
 
 func (u *User) EmployeeTreeSubs(db *sql.DB) error {
-	var q string
-	if u.ActiveOnly == true {
-		q = query.SearchQuery("cmsEmployeeTreeSubsActive")
-	} else {
-		q = query.SearchQuery("cmsEmployeeTreeSubsAll")
-	}
-
-	rows, err := db.Query(q,
-		u.UserID,
+	rows, err := db.Query(query.SearchQuery("cmsEmployeeTreeSubs"),
+		u.UserID, u.ActiveOnly, u.GMTDiff,
 	)
 	defer rows.Close()
 	if err != nil {
@@ -283,29 +269,6 @@ func (u *User) GetSubs(db *sql.DB) error {
 			return err
 		}
 		u.ReferenceUser = append(u.ReferenceUser, u2)
-	}
-	err = rows.Err()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (u *User) GetAllActivities(db *sql.DB) error {
-	rows, err := db.Query(query.SearchQuery("cmsGetActivities"),
-		u.UserID,
-	)
-	defer rows.Close()
-	if err != nil {
-		return err
-	}
-	for rows.Next() {
-		var a Activity
-		err := rows.Scan(&a.ActivityName, &a.ActivityType, &a.Category, &a.Classification, &a.Utilization)
-		if err != nil {
-			return err
-		}
-		u.Activities = append(u.Activities, a)
 	}
 	err = rows.Err()
 	if err != nil {
