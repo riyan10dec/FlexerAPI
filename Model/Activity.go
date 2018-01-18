@@ -7,8 +7,8 @@ import (
 
 type Activity struct {
 	ActivityName      string  `json:"activityName"`
-	ActivityType      int     `json:"activityType"`
-	Category          int     `json:"category"`
+	ActivityType      string  `json:"activityType"`
+	Category          string  `json:"category"`
 	Classification    string  `json:"classification"`
 	Utilization       float64 `json:"utilization"`
 	UserID            int     `json:"userID"`
