@@ -102,6 +102,7 @@ func (a *App) initializeRoutes() {
 	a.Router.Handle("/cms/GetUserDailyActivity/{userID}/{periodStart}/{periodEnd}", jwtMiddleware.Handler(corsHandler(http.HandlerFunc(a.GetUserDailyActivity)))).Methods("GET")
 	a.Router.Handle("/cms/GetUserDailyTimeline/{userID}/{sessionDate}", jwtMiddleware.Handler(corsHandler(http.HandlerFunc(a.GetUserDailyTimeline)))).Methods("GET")
 	a.Router.Handle("/cms/GetUserTasks/{UserID}/{PeriodStart}/{PeriodEnd}/{IsOnGoingBy}", jwtMiddleware.Handler(http.HandlerFunc(a.GetUserTasks))).Methods("GET")
+	a.Router.Handle("/cms/GetNotification/{userID}", jwtMiddleware.Handler(corsHandler(http.HandlerFunc(a.GetNotification)))).Methods("GET")
 	//a.Router.Handle("/cms/EditDepartment", jwtMiddleware.Handler(http.HandlerFunc(a.EditDepartment))).Methods("POST")
 }
 
@@ -1265,6 +1266,35 @@ func (a *App) GetUserDailyTimeline(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	result := map[string]interface{}{"performances": res}
+	respondWithJSON(w, http.StatusOK, result)
+}
+
+func (a *App) GetNotification(w http.ResponseWriter, r *http.Request) {
+	//vars := mux.Vars(r)
+	var notif model.Notification
+	vars := mux.Vars(r)
+	var err error
+	notif.UserID, err = strconv.ParseInt(vars["userID"], 10, 64)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload", -2)
+		return
+	}
+	if err := notif.GetNotification(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error(), -1)
+		return
+	}
+
+	var res []map[string]interface{}
+	for _, n := range notif.Notifications {
+		res = append(res, map[string]interface{}{
+			"notificationID":      n.NotificationID,
+			"notificationMessage": n.NotificationMessage,
+			"pageURL":             n.PageURL,
+			"seen":                n.Seen,
+		})
+	}
+
+	result := map[string]interface{}{"notifications": res}
 	respondWithJSON(w, http.StatusOK, result)
 }
 

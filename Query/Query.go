@@ -147,6 +147,10 @@ var q = []Query{
 		key:   "getUserTask",
 		query: `call sp_cms_get_user_tasks (?,?,?,?)`,
 	},
+	Query{
+		key:   "getNotificationQuery",
+		query: `Select Notification_ID, Notification_Message, Page_URL, Seen from Notifications where User_ID = ?`,
+	},
 }
 
 func SearchQuery(key string) string {
